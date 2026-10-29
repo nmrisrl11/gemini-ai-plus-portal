@@ -27,7 +27,7 @@ from playwright.sync_api import sync_playwright
 from claimer import GeminiAIClaimer
 
 CDP_PORT = 9222
-TARGET_URL = "https://internshala.com/student/personal_details"
+TARGET_URL = "https://internshala.com/user_preference/preferences"
 
 SUPPORTED_BROWSERS = {
     "brave": {
@@ -258,7 +258,7 @@ def run_recovery(browser_choice: Optional[str] = None):
                 pass
 
         if not target_page:
-            print(f"Opening personal details tab at {TARGET_URL}...")
+            print(f"Opening preferences tab at {TARGET_URL}...")
             target_page = context.new_page()
             target_page.goto(TARGET_URL, wait_until="domcontentloaded")
             target_page.wait_for_timeout(3000)
@@ -267,6 +267,8 @@ def run_recovery(browser_choice: Optional[str] = None):
                 "personal_details" not in target_page.url
                 and "onboarding" not in target_page.url
                 and "preferences" not in target_page.url
+                and "internships" not in target_page.url
+                and "google-gemini-ai-plus" not in target_page.url
             ):
                 print(f"Navigating tab to {TARGET_URL}...")
                 target_page.goto(TARGET_URL, wait_until="domcontentloaded")
@@ -280,27 +282,42 @@ def run_recovery(browser_choice: Optional[str] = None):
             allow_manual_verification=True,
         )
 
-        print("\n-------------------------------------------------------")
-        print("  STEP 1: AUTO-FILLING PROFILE ONBOARDING DETAILS")
-        print("-------------------------------------------------------")
-        target_page.wait_for_timeout(1500)
-        success_profile = claimer._step_profile_details(target_page)
-        print(f"[Result] Profile details completion status: {success_profile}")
+        # Step 1: Personal Details (only if actually on onboarding/personal_details)
+        if (
+            "personal_details" in target_page.url
+            or "onboarding" in target_page.url
+            or target_page.locator(":has-text(\"Let's get started\")").first.is_visible()
+        ):
+            print("\n-------------------------------------------------------")
+            print("  STEP 1: AUTO-FILLING PROFILE ONBOARDING DETAILS")
+            print("-------------------------------------------------------")
+            target_page.wait_for_timeout(1000)
+            success_profile = claimer._step_profile_details(target_page)
+            print(f"[Result] Profile details completion status: {success_profile}")
 
-        if not success_profile:
-            print("\n[ERROR] Form could not pass validation. Please inspect your open browser tab.")
-            return False
+            if not success_profile:
+                print("\n[ERROR] Form could not pass validation. Please inspect your open browser tab.")
+                return False
+        else:
+            print("\n[INFO] Profile onboarding details already completed. Proceeding directly...")
 
-        print("\n-------------------------------------------------------")
-        print("  STEP 2: AUTO-FILLING PREFERENCES")
-        print("-------------------------------------------------------")
-        target_page.wait_for_timeout(1500)
-        success_pref = claimer._step_preferences(target_page)
-        print(f"[Result] Preferences completion status: {success_pref}")
+        # Step 2: Preferences (if on preferences or not yet on matching-preferences)
+        if (
+            "matching-preferences" not in target_page.url
+            and "google-gemini-ai-plus" not in target_page.url
+        ):
+            print("\n-------------------------------------------------------")
+            print("  STEP 2: AUTO-FILLING PREFERENCES")
+            print("-------------------------------------------------------")
+            target_page.wait_for_timeout(1000)
+            success_pref = claimer._step_preferences(target_page)
+            print(f"[Result] Preferences completion status: {success_pref}")
 
-        if not success_pref:
-            print("\n[ERROR] Preferences step encountered an issue.")
-            return False
+            if not success_pref:
+                print("\n[ERROR] Preferences step encountered an issue.")
+                return False
+        else:
+            print("\n[INFO] Preferences already completed. Proceeding directly to offer claim...")
 
         print("\n-------------------------------------------------------")
         print("  STEP 3: CLAIMING 12-MONTH FREE GEMINI PLUS PROMO LINK")

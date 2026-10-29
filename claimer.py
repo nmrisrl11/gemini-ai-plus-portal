@@ -573,6 +573,10 @@ class GeminiAIClaimer:
                             return None
                         if not self._step_preferences(page):
                             return None
+                    elif "preferences" in page.url or page.locator("h1, h2, div, span").filter(has_text=re.compile(r"Your preferences", re.I)).first.is_visible():
+                        self.log("Existing account is on preferences page. Auto-completing preferences...", "INFO")
+                        if not self._step_preferences(page):
+                            return None
                 else:
                     # New Registration Mode
                     if not self._step_registration(page):
@@ -1154,6 +1158,18 @@ class GeminiAIClaimer:
         if self._is_stopped:
             return False
 
+        # Guard: Check if personal details onboarding is already completed
+        curr_url = page.url.lower()
+        if (
+            "preferences" in curr_url
+            or "internships" in curr_url
+            or "google-gemini-ai-plus" in curr_url
+            or page.locator("h1, h2, div, span").filter(has_text=re.compile(r"Your preferences", re.I)).first.is_visible()
+            or page.locator(".preference-types-field, .modes-field").first.is_visible()
+        ):
+            self.log("Profile onboarding details already completed. Proceeding to career preferences...", "INFO")
+            return True
+
         self.log("Configuring eligibility profile ('Let's get started')...", "INFO")
         page.wait_for_timeout(2000)
 
@@ -1538,135 +1554,191 @@ class GeminiAIClaimer:
 
         self.log("Synchronizing with career preferences portal...", "INFO")
 
-        # 1. Ensure we land on the preferences page (wait up to 12s for redirect or navigate directly)
+        # Guard: Check if preferences are already completed
+        curr_url = page.url.lower()
+        if "matching-preferences" in curr_url or ("internships" in curr_url and "user_preference" not in curr_url):
+            self.log("Career preferences profile is already completed!", "SUCCESS")
+            return True
+
+        # 1. Ensure we are on preferences (wait up to 10s for redirect or navigate directly)
         is_on_pref = False
-        for _ in range(12):
-            curr_url = page.url
-            if "preferences" in curr_url or page.locator("h1, h2, div, span").filter(has_text=re.compile(r"Your preferences", re.I)).first.is_visible():
+        for _ in range(10):
+            curr_url = page.url.lower()
+            if (
+                "preferences" in curr_url
+                or page.locator(".preference-types-field, .modes-field").first.is_visible()
+                or page.locator("h1, h2, div, span").filter(has_text=re.compile(r"Your preferences", re.I)).first.is_visible()
+            ):
                 is_on_pref = True
                 break
             page.wait_for_timeout(1000)
 
         if not is_on_pref:
-            self.log("Navigating directly to preferences page (https://internshala.com/student/preferences)...", "INFO")
+            self.log("Navigating directly to preferences page (https://internshala.com/user_preference/preferences)...", "INFO")
             try:
-                page.goto("https://internshala.com/student/preferences", wait_until="domcontentloaded", timeout=25000)
+                page.goto("https://internshala.com/user_preference/preferences", wait_until="domcontentloaded", timeout=25000)
                 page.wait_for_timeout(2000)
             except Exception as e:
                 self.log(f"Preferences navigation notice: {e}", "WARNING")
 
-        # 2. Wait for preferences form / container to become visible
-        try:
-            page.wait_for_selector(
-                ":has-text('Your preferences'), :has-text('Area(s) of interest'), input[placeholder*='Areas you want to work in']",
-                state="visible",
-                timeout=15000
-            )
-        except Exception:
-            self.log("Waiting for preferences container timed out; proceeding with best-effort selection...", "WARNING")
-
         page.wait_for_timeout(1000)
 
-        # 3. Select Area of Interest (e.g. 'Web Development')
-        self.log("Selecting career interests ('Web Development')...", "INFO")
-        interest_clicked = False
+        # Re-check if already completed
+        if "matching-preferences" in page.url.lower() or ("internships" in page.url.lower() and "user_preference" not in page.url.lower()):
+            self.log("Career preferences profile is already completed!", "SUCCESS")
+            return True
 
-        # Try clicking one of the popular chips
-        chips_to_try = [
-            r"^Web Development",
-            r"^Software Development",
-            r"^Programming",
-            r"^Python/Django",
-            r"^Data Science",
-        ]
-        for chip_pattern in chips_to_try:
-            try:
-                chip = page.locator("div, span, button, a").filter(has_text=re.compile(chip_pattern, re.I)).first
-                if chip.is_visible():
-                    chip.scroll_into_view_if_needed()
-                    chip.click(force=True)
-                    interest_clicked = True
-                    self.log(f"Selected interest pill: {chip_pattern.replace('^', '')}", "INFO")
-                    page.wait_for_timeout(500)
-                    break
-            except Exception:
-                continue
+        # --- PHASE 1: Handle Step 1 ("Area(s) of interest") if present ---
+        phase1_interest_input = page.locator("input[placeholder*='Areas you want to work in' i], input[placeholder*='learn about' i]").first
+        phase1_next_btn = page.locator("button:has-text('Next'), .next-button, #next_btn").first
 
-        # Fallback: type into the search box if chips were not clicked
-        if not interest_clicked:
+        if phase1_interest_input.is_visible() or phase1_next_btn.is_visible():
+            self.log("Handling Phase 1: Selecting career interest ('Web Development')...", "INFO")
+
+            # Check if an active/selected chip is already present
+            has_selected_interest = page.evaluate("""() => {
+                const active = document.querySelector('.multiselect-input-chip-container .chip, .chips-container .chip.active, [class*="chip"][class*="active"], [class*="selected"]');
+                return active !== null;
+            }""")
+
+            if not has_selected_interest:
+                # 1. Try clicking Web Development chip
+                web_dev_chip = page.locator(".chips-container .chip, div.chip").filter(has_text=re.compile(r"^Web Development", re.I)).first
+                try:
+                    if web_dev_chip.is_visible():
+                        web_dev_chip.scroll_into_view_if_needed()
+                        web_dev_chip.click(force=True)
+                        page.wait_for_timeout(500)
+                except Exception:
+                    pass
+
+                # Fallback: type into search input
+                has_selected_interest = page.evaluate("""() => {
+                    return document.querySelector('.multiselect-input-chip-container .chip, .chips-container .chip.active') !== null;
+                }""")
+                if not has_selected_interest and phase1_interest_input.is_visible():
+                    try:
+                        phase1_interest_input.scroll_into_view_if_needed()
+                        phase1_interest_input.click()
+                        phase1_interest_input.fill("Web Development")
+                        page.wait_for_timeout(400)
+                        phase1_interest_input.press("Enter")
+                        page.wait_for_timeout(500)
+                    except Exception:
+                        pass
+
+            # Advance from Phase 1 to Phase 2 via 'Next' button
+            if phase1_next_btn.is_visible():
+                self.log("Clicking 'Next' to advance to Phase 2...", "INFO")
+                try:
+                    phase1_next_btn.scroll_into_view_if_needed()
+                    phase1_next_btn.click(force=True)
+                    page.wait_for_timeout(1500)
+                except Exception:
+                    page.evaluate("""() => {
+                        const btn = Array.from(document.querySelectorAll('button')).find(b => (b.textContent || '').trim().toLowerCase() === 'next');
+                        if (btn) btn.click();
+                    }""")
+                    page.wait_for_timeout(1500)
+
+        # --- PHASE 2: Opportunity Type & Work Mode ---
+        # Wait for Phase 2 containers to appear
+        for _ in range(8):
+            if (
+                page.locator(".preference-types-field, .modes-field").first.is_visible()
+                or page.locator("button.submit-cta, button:has-text('Find me opportunities')").first.is_visible()
+            ):
+                break
+            page.wait_for_timeout(500)
+
+        self.log("Handling Phase 2: Selecting opportunity type & work mode...", "INFO")
+
+        for attempt in range(1, 4):
+            # 1. Select 'Internships' in .preference-types-field
+            self.log("Selecting 'Internships'...", "INFO")
+            pref_active = page.evaluate("""() => {
+                const pref = document.querySelector('.preference-types-field');
+                return pref ? pref.querySelector('.chip.active') !== null : false;
+            }""")
+            if not pref_active:
+                internship_chip = page.locator(".preference-types-field .chip").filter(has_text=re.compile(r"Internship", re.I)).first
+                try:
+                    if internship_chip.is_visible():
+                        internship_chip.scroll_into_view_if_needed()
+                        internship_chip.click(force=True)
+                        page.wait_for_timeout(400)
+                except Exception:
+                    pass
+                # JavaScript fallback for internship chip
+                page.evaluate("""() => {
+                    const pref = document.querySelector('.preference-types-field');
+                    if (pref && !pref.querySelector('.chip.active')) {
+                        const chip = Array.from(pref.querySelectorAll('.chip')).find(c => (c.textContent || '').includes('Internship')) || pref.querySelector('.chip');
+                        if (chip) chip.click();
+                    }
+                }""")
+                page.wait_for_timeout(300)
+
+            # 2. Select 'Work from home' (or 'In-office') in .modes-field
+            self.log("Selecting 'Work from home'...", "INFO")
+            mode_active = page.evaluate("""() => {
+                const mode = document.querySelector('.modes-field');
+                return mode ? mode.querySelector('.chip.active') !== null : false;
+            }""")
+            if not mode_active:
+                wfh_chip = page.locator(".modes-field .chip").filter(has_text=re.compile(r"Work from home", re.I)).first
+                try:
+                    if wfh_chip.is_visible():
+                        wfh_chip.scroll_into_view_if_needed()
+                        wfh_chip.click(force=True)
+                        page.wait_for_timeout(400)
+                except Exception:
+                    pass
+                # JavaScript fallback for mode chip
+                page.evaluate("""() => {
+                    const mode = document.querySelector('.modes-field');
+                    if (mode && !mode.querySelector('.chip.active')) {
+                        const chip = Array.from(mode.querySelectorAll('.chip')).find(c => (c.textContent || '').includes('Work from home')) 
+                                  || mode.querySelector('.chip');
+                        if (chip) chip.click();
+                    }
+                }""")
+                page.wait_for_timeout(300)
+
+            # 3. Click 'Find me opportunities' submit CTA
+            find_btn = page.locator("button.submit-cta, button:has-text('Find me opportunities')").first
+            self.log("Submitting preferences ('Find me opportunities')...", "INFO")
             try:
-                search_input = page.locator("input[placeholder*='Areas you want to work in'], input[placeholder*='learn about']").first
-                if search_input.is_visible():
-                    search_input.scroll_into_view_if_needed()
-                    search_input.click()
-                    search_input.fill("Web Development")
-                    page.wait_for_timeout(600)
-                    page.keyboard.press("Enter")
-                    interest_clicked = True
-                    self.log("Entered 'Web Development' into interest search box.", "INFO")
-                    page.wait_for_timeout(500)
+                if find_btn.is_visible():
+                    find_btn.scroll_into_view_if_needed()
+                    find_btn.click(force=True)
+                else:
+                    page.evaluate("""() => {
+                        const btn = document.querySelector('button.submit-cta') || 
+                                    Array.from(document.querySelectorAll('button')).find(b => (b.textContent || '').includes('Find me opportunities'));
+                        if (btn) btn.click();
+                    }""")
             except Exception as e:
-                self.log(f"Interest search box notice: {e}", "WARNING")
+                self.log(f"Submit CTA notice: {e}", "WARNING")
 
-        # 4. Click 'Next' under Area of interest
-        try:
-            next_btn = page.locator("button:has-text('Next'), .next-button, #next_btn").first
-            if next_btn.is_visible():
-                next_btn.scroll_into_view_if_needed()
-                next_btn.click(force=True)
-                self.log("Submitted career interest, advancing to next preference...", "INFO")
-                page.wait_for_timeout(1500)
-        except Exception as e:
-            self.log(f"Next button notice: {e}", "WARNING")
+            page.wait_for_timeout(2500)
 
-        # 5. Handle any subsequent preference steps (e.g., Looking for, Work mode)
-        for sub_step in range(4):
-            page.wait_for_timeout(1000)
-            # If redirected away from preferences, we're done
-            if "preferences" not in page.url and ("dashboard" in page.url or "google-gemini-ai-plus" in page.url):
-                break
+            # 4. Verify completion / navigation away from preferences
+            curr_url = page.url.lower()
+            if (
+                "matching-preferences" in curr_url
+                or "google-gemini-ai-plus" in curr_url
+                or ("internships" in curr_url and "user_preference" not in curr_url)
+                or not page.locator("button.submit-cta, button:has-text('Find me opportunities')").first.is_visible()
+            ):
+                self.log("Career preferences profile successfully completed and accepted!", "SUCCESS")
+                return True
 
-            # Looking for: Internships / Jobs
-            try:
-                intern_chip = page.locator("div, span, button, a").filter(has_text=re.compile(r"^Internships", re.I)).first
-                if intern_chip.is_visible():
-                    intern_chip.scroll_into_view_if_needed()
-                    intern_chip.click(force=True)
-                    self.log("Selected opportunity type: Internships", "INFO")
-                    page.wait_for_timeout(500)
-            except Exception:
-                pass
-
-            # Work mode: Work from home / In-office
-            try:
-                mode_chip = page.locator("div, span, button, a").filter(has_text=re.compile(r"^(Work from home|In-office)", re.I)).first
-                if mode_chip.is_visible():
-                    mode_chip.scroll_into_view_if_needed()
-                    mode_chip.click(force=True)
-                    self.log("Selected work mode preference.", "INFO")
-                    page.wait_for_timeout(500)
-            except Exception:
-                pass
-
-            # Check for final completion / save buttons
-            submit_btn = page.locator(
-                "button:has-text('Find me opportunities'), button:has-text('Save'), button:has-text('Done'), button:has-text('Submit'), #find_me_opportunities"
-            ).first
-            if submit_btn.is_visible():
-                submit_btn.scroll_into_view_if_needed()
-                submit_btn.click(force=True)
-                self.log("Preferences successfully submitted!", "SUCCESS")
-                page.wait_for_timeout(2500)
-                break
-
-            # Click next if available
-            next_btn = page.locator("button:has-text('Next')").first
-            if next_btn.is_visible():
-                next_btn.scroll_into_view_if_needed()
-                next_btn.click(force=True)
-                page.wait_for_timeout(1500)
-            else:
-                break
+            # If still on page, check for errors
+            has_error = page.locator(".has-error, :has-text('Required')").first.is_visible()
+            if has_error:
+                self.log(f"Attempt {attempt}: Preferences required fields not registered. Retrying...", "WARNING")
+                page.wait_for_timeout(800)
 
         # Check for any lingering Skip button
         try:
@@ -1677,7 +1749,12 @@ class GeminiAIClaimer:
         except Exception:
             pass
 
-        self.log("Career preferences profile successfully configured!", "SUCCESS")
+        # Final check if navigated
+        if "preferences" not in page.url.lower() or not page.locator("button.submit-cta").first.is_visible():
+            self.log("Career preferences profile completed successfully!", "SUCCESS")
+            return True
+
+        self.log("Preferences submission finished.", "INFO")
         return True
 
     def _step_claim_gemini(self, page: Page, context: BrowserContext) -> Optional[str]:
@@ -1738,7 +1815,7 @@ class GeminiAIClaimer:
         # Locate 'Start FREE 12 months trial'
         self.log("Activating 12-Month Free Trial...", "INFO")
         trial_btn = page.locator(
-            "button:has-text('Start FREE 12 months trial'), a:has-text('Start FREE 12 months trial'), :has-text('Start FREE 12 months trial')"
+            "button.claim_offer_cta, button:has-text('Start FREE 12 months trial'), a:has-text('Start FREE 12 months trial'), :has-text('Start FREE 12 months trial')"
         ).first
 
         if not trial_btn.is_visible():
@@ -1785,7 +1862,15 @@ class GeminiAIClaimer:
 
         if not redirection_url:
             try:
-                trial_btn.click()
+                try:
+                    with context.expect_page(timeout=8000) as new_page_info:
+                        trial_btn.click()
+                    new_p = new_page_info.value
+                    page.wait_for_timeout(1000)
+                    if "one.google.com" in new_p.url or "google.com/offer" in new_p.url:
+                        redirection_url = new_p.url
+                except Exception:
+                    trial_btn.click()
             except Exception as e:
                 self.log(f"Trial button click trigger notice: {e}", "WARNING")
 
