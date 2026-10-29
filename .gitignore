@@ -1,0 +1,59 @@
+# ==============================================================================
+# Git Ignore - Google AI Plus (1-Year Access) Portal
+# ==============================================================================
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# User Data & Generated Credentials (CRITICAL: Never commit personal account info)
+results/
+*.txt.bak
+
+# PyInstaller & Packaging artifacts
+build/
+dist/
+*.spec
+
+# Playwright engine temporary data & traces
+.playwright/
+playwright-report/
+test-results/
+
+# Log files & debugging dumps
+*.log
+
+# Operating System generated files
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+.DS_Store
+
+# IDE, Editor & Workspace files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Local test scratch assets
+test_*.png
+test_*.ico
+test_*.jpg
+scratch/
