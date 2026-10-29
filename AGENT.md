@@ -148,6 +148,21 @@ A comprehensive unit test suite is maintained in `scratch/test_suite.py` contain
 & ".\.venv\Scripts\python.exe" "C:\Users\NOMER ISRAEL\.gemini\antigravity\brain\40fad3d3-ae4e-4e51-aeda-7286d50bea21\scratch\test_suite.py"
 ```
 
+### D. Career Preferences Synchronization & Claim Extraction (Fixed October 2026)
+1. **Preferences Onboarding (`_step_preferences`):**
+   - Fixed silent pass-through where `is_visible()` evaluated to `False` while the page was redirecting from `personal_details` to `https://internshala.com/student/preferences`.
+   - Added explicit awaiting of `/student/preferences` URL and container visibility (`:has-text('Your preferences')`).
+   - Added regex-based interest pill matching (`^Web Development`, `^Software Development`, etc.) with fallback to direct search input.
+   - Handled subsequent preference questions (opportunity type, work mode) and clicking the primary blue `Next` / `Find me opportunities` buttons.
+2. **Offer Link Capture & Loop Prevention (`_step_claim_gemini`):**
+   - Intercepts outgoing network requests (`context.on("request")`) and responses for `one.google.com` or `google.com/offer`.
+   - Continuously watches newly opened tabs/popups (`context.on("page")`) and polls all context pages for up to 15 seconds.
+   - Extracts redirect parameters (`url=...`) from intermediate tracking URLs.
+   - Prevents looping back to `_step_profile_details` when the profile is already 100% completed.
+3. **Multi-Browser Recovery Safety Net (`account_recovery/resume_browser_session.py`):**
+   - Bypasses Chrome 124+ CDP security restriction (`DevTools remote debugging requires a non-default data directory`) by mounting an automated Directory Junction (`DebugData`).
+   - Automatically discovers and selects the user's active authenticated Chrome profile (e.g. `Profile 2` / `GHST`).
+
 ---
 
 ## 7. Packaging & Portable Builds

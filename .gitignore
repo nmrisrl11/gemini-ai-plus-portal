@@ -57,3 +57,4 @@ test_*.png
 test_*.ico
 test_*.jpg
 scratch/
+temp/

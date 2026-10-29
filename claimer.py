@@ -1536,70 +1536,137 @@ class GeminiAIClaimer:
         if self._is_stopped:
             return False
 
-        # If already not on preferences (or already on dashboard / gemini page)
-        if "preferences" not in page.url and not page.locator("div, span, h1, h2").filter(has_text="preferences").first.is_visible():
+        self.log("Synchronizing with career preferences portal...", "INFO")
+
+        # 1. Ensure we land on the preferences page (wait up to 12s for redirect or navigate directly)
+        is_on_pref = False
+        for _ in range(12):
+            curr_url = page.url
+            if "preferences" in curr_url or page.locator("h1, h2, div, span").filter(has_text=re.compile(r"Your preferences", re.I)).first.is_visible():
+                is_on_pref = True
+                break
             page.wait_for_timeout(1000)
-            if "preferences" not in page.url and not page.locator("div, span, h1, h2").filter(has_text="preferences").first.is_visible():
-                return True
 
-        self.log("Setting preference profile ('Your preferences')...", "INFO")
-        page.wait_for_timeout(1500)
+        if not is_on_pref:
+            self.log("Navigating directly to preferences page (https://internshala.com/student/preferences)...", "INFO")
+            try:
+                page.goto("https://internshala.com/student/preferences", wait_until="domcontentloaded", timeout=25000)
+                page.wait_for_timeout(2000)
+            except Exception as e:
+                self.log(f"Preferences navigation notice: {e}", "WARNING")
 
-        # 1. Area of interest: 'Web Development +'
+        # 2. Wait for preferences form / container to become visible
         try:
-            web_dev_chip = page.get_by_text("Web Development +", exact=True).first
-            if not web_dev_chip.is_visible():
-                web_dev_chip = page.get_by_text("Web Development", exact=False).first
-            if web_dev_chip.is_visible():
-                web_dev_chip.scroll_into_view_if_needed()
-                web_dev_chip.click(force=True)
-                page.wait_for_timeout(500)
-        except Exception as e:
-            self.log(f"Preferences interest notice: {e}", "WARNING")
+            page.wait_for_selector(
+                ":has-text('Your preferences'), :has-text('Area(s) of interest'), input[placeholder*='Areas you want to work in']",
+                state="visible",
+                timeout=15000
+            )
+        except Exception:
+            self.log("Waiting for preferences container timed out; proceeding with best-effort selection...", "WARNING")
 
-        # 2. Click 'Next' under Area of interest
-        try:
-            next_pref_btn = page.locator("button:has-text('Next'), #next_btn").first
-            if next_pref_btn.is_visible():
-                next_pref_btn.scroll_into_view_if_needed()
-                next_pref_btn.click(force=True)
-                page.wait_for_timeout(1000)
-        except Exception as e:
-            self.log(f"Preferences next button notice: {e}", "WARNING")
+        page.wait_for_timeout(1000)
 
-        # 3. Looking for: 'Internships +'
-        try:
-            internships_chip = page.get_by_text("Internships +", exact=True).first
-            if not internships_chip.is_visible():
-                internships_chip = page.get_by_text("Internships", exact=False).first
-            if internships_chip.is_visible():
-                internships_chip.scroll_into_view_if_needed()
-                internships_chip.click(force=True)
-                page.wait_for_timeout(500)
-        except Exception as e:
-            self.log(f"Preferences internships notice: {e}", "WARNING")
+        # 3. Select Area of Interest (e.g. 'Web Development')
+        self.log("Selecting career interests ('Web Development')...", "INFO")
+        interest_clicked = False
 
-        # 4. Work mode: 'In-office +' / 'In-office'
-        try:
-            inoffice_chip = page.get_by_text("In-office +", exact=True).first
-            if not inoffice_chip.is_visible():
-                inoffice_chip = page.get_by_text("In-office", exact=False).first
-            if inoffice_chip.is_visible():
-                inoffice_chip.scroll_into_view_if_needed()
-                inoffice_chip.click(force=True)
-                page.wait_for_timeout(500)
-        except Exception as e:
-            self.log(f"Preferences work mode notice: {e}", "WARNING")
+        # Try clicking one of the popular chips
+        chips_to_try = [
+            r"^Web Development",
+            r"^Software Development",
+            r"^Programming",
+            r"^Python/Django",
+            r"^Data Science",
+        ]
+        for chip_pattern in chips_to_try:
+            try:
+                chip = page.locator("div, span, button, a").filter(has_text=re.compile(chip_pattern, re.I)).first
+                if chip.is_visible():
+                    chip.scroll_into_view_if_needed()
+                    chip.click(force=True)
+                    interest_clicked = True
+                    self.log(f"Selected interest pill: {chip_pattern.replace('^', '')}", "INFO")
+                    page.wait_for_timeout(500)
+                    break
+            except Exception:
+                continue
 
-        # 5. Find me opportunities button
+        # Fallback: type into the search box if chips were not clicked
+        if not interest_clicked:
+            try:
+                search_input = page.locator("input[placeholder*='Areas you want to work in'], input[placeholder*='learn about']").first
+                if search_input.is_visible():
+                    search_input.scroll_into_view_if_needed()
+                    search_input.click()
+                    search_input.fill("Web Development")
+                    page.wait_for_timeout(600)
+                    page.keyboard.press("Enter")
+                    interest_clicked = True
+                    self.log("Entered 'Web Development' into interest search box.", "INFO")
+                    page.wait_for_timeout(500)
+            except Exception as e:
+                self.log(f"Interest search box notice: {e}", "WARNING")
+
+        # 4. Click 'Next' under Area of interest
         try:
-            find_opp_btn = page.locator("button:has-text('Find me opportunities'), #find_me_opportunities, button:has-text('Submit')").first
-            if find_opp_btn.is_visible():
-                find_opp_btn.scroll_into_view_if_needed()
-                find_opp_btn.click(force=True)
-                page.wait_for_timeout(3000)
+            next_btn = page.locator("button:has-text('Next'), .next-button, #next_btn").first
+            if next_btn.is_visible():
+                next_btn.scroll_into_view_if_needed()
+                next_btn.click(force=True)
+                self.log("Submitted career interest, advancing to next preference...", "INFO")
+                page.wait_for_timeout(1500)
         except Exception as e:
-            self.log(f"Preferences submit button notice: {e}", "WARNING")
+            self.log(f"Next button notice: {e}", "WARNING")
+
+        # 5. Handle any subsequent preference steps (e.g., Looking for, Work mode)
+        for sub_step in range(4):
+            page.wait_for_timeout(1000)
+            # If redirected away from preferences, we're done
+            if "preferences" not in page.url and ("dashboard" in page.url or "google-gemini-ai-plus" in page.url):
+                break
+
+            # Looking for: Internships / Jobs
+            try:
+                intern_chip = page.locator("div, span, button, a").filter(has_text=re.compile(r"^Internships", re.I)).first
+                if intern_chip.is_visible():
+                    intern_chip.scroll_into_view_if_needed()
+                    intern_chip.click(force=True)
+                    self.log("Selected opportunity type: Internships", "INFO")
+                    page.wait_for_timeout(500)
+            except Exception:
+                pass
+
+            # Work mode: Work from home / In-office
+            try:
+                mode_chip = page.locator("div, span, button, a").filter(has_text=re.compile(r"^(Work from home|In-office)", re.I)).first
+                if mode_chip.is_visible():
+                    mode_chip.scroll_into_view_if_needed()
+                    mode_chip.click(force=True)
+                    self.log("Selected work mode preference.", "INFO")
+                    page.wait_for_timeout(500)
+            except Exception:
+                pass
+
+            # Check for final completion / save buttons
+            submit_btn = page.locator(
+                "button:has-text('Find me opportunities'), button:has-text('Save'), button:has-text('Done'), button:has-text('Submit'), #find_me_opportunities"
+            ).first
+            if submit_btn.is_visible():
+                submit_btn.scroll_into_view_if_needed()
+                submit_btn.click(force=True)
+                self.log("Preferences successfully submitted!", "SUCCESS")
+                page.wait_for_timeout(2500)
+                break
+
+            # Click next if available
+            next_btn = page.locator("button:has-text('Next')").first
+            if next_btn.is_visible():
+                next_btn.scroll_into_view_if_needed()
+                next_btn.click(force=True)
+                page.wait_for_timeout(1500)
+            else:
+                break
 
         # Check for any lingering Skip button
         try:
@@ -1610,6 +1677,7 @@ class GeminiAIClaimer:
         except Exception:
             pass
 
+        self.log("Career preferences profile successfully configured!", "SUCCESS")
         return True
 
     def _step_claim_gemini(self, page: Page, context: BrowserContext) -> Optional[str]:
@@ -1656,8 +1724,9 @@ class GeminiAIClaimer:
                 self.log("Profile completion prompt detected on offer page. Completing onboarding profile...", "INFO")
                 complete_btn.click()
                 page.wait_for_timeout(2000)
-                if not self._step_profile_details(page):
-                    return None
+                if page.locator(":has-text(\"Let's get started\")").first.is_visible():
+                    if not self._step_profile_details(page):
+                        return None
                 if not self._step_preferences(page):
                     return None
                 # Re-navigate to promo portal
@@ -1676,39 +1745,87 @@ class GeminiAIClaimer:
             page.wait_for_timeout(2000)
 
         if not trial_btn.is_visible():
+            # Check if there is an alternative claim button on page
+            alt_btn = page.locator("button:has-text('Claim'), a:has-text('Claim'), button:has-text('Redeem'), a:has-text('Redeem')").first
+            if alt_btn.is_visible():
+                trial_btn = alt_btn
+
+        if not trial_btn.is_visible():
             self.log("Could not locate final trial activation button.", "ERROR")
             return None
 
         self.log("Intercepting Google One redemption offer link...", "INFO")
         redirection_url = None
 
-        try:
-            with context.expect_page(timeout=10000) as new_page_info:
-                trial_btn.click()
-            new_page = new_page_info.value
-            new_page.wait_for_load_state("domcontentloaded")
-            redirection_url = new_page.url
-            self.log(f"Captured Google One offer URL: {redirection_url}", "SUCCESS")
-        except Exception:
-            page.wait_for_timeout(3000)
-            if "one.google.com" in page.url or "google.com" in page.url:
-                redirection_url = page.url
-            for p in context.pages:
-                if "one.google.com/offer" in p.url or "google.com" in p.url:
-                    redirection_url = p.url
-                    break
+        # Network interceptor for redemption URL
+        captured_urls = []
+        def on_req(req):
+            u = req.url
+            if "one.google.com" in u or "google.com/offer" in u:
+                captured_urls.append(u)
 
-        if not redirection_url:
-            if "one.google.com" in page.url:
-                redirection_url = page.url
+        def on_resp(resp):
+            u = resp.url
+            if "one.google.com" in u or "google.com/offer" in u:
+                captured_urls.append(u)
+
+        context.on("request", on_req)
+        context.on("response", on_resp)
+
+        opened_pages = []
+        context.on("page", lambda p: opened_pages.append(p))
+
+        # Check if button directly has href
+        try:
+            btn_href = trial_btn.get_attribute("href")
+            if btn_href and ("one.google.com" in btn_href or "google.com" in btn_href):
+                redirection_url = btn_href
+        except Exception:
+            pass
 
         if not redirection_url:
             try:
-                href = trial_btn.get_attribute("href")
-                if href and ("one.google.com" in href or "google.com" in href):
-                    redirection_url = href
-            except Exception:
-                pass
+                trial_btn.click()
+            except Exception as e:
+                self.log(f"Trial button click trigger notice: {e}", "WARNING")
+
+        # Poll all open pages and captured events for up to 15 seconds
+        start_poll = time.time()
+        while time.time() - start_poll < 15:
+            if redirection_url:
+                break
+
+            # 1. Check all open pages
+            for p in list(context.pages) + opened_pages:
+                try:
+                    p_url = p.url
+                    if "one.google.com" in p_url or "google.com/offer" in p_url:
+                        redirection_url = p_url
+                        break
+                    if "internshala.com" in p_url and "redirect" in p_url:
+                        from urllib.parse import parse_qs, urlparse
+                        qs = parse_qs(urlparse(p_url).query)
+                        for qk in ("url", "target", "redirect_url"):
+                            if qk in qs and "google.com" in qs[qk][0]:
+                                redirection_url = qs[qk][0]
+                                break
+                except Exception:
+                    pass
+                if redirection_url:
+                    break
+
+            # 2. Check captured network URLs
+            if not redirection_url and captured_urls:
+                redirection_url = captured_urls[-1]
+                break
+
+            # 3. Check current page URL
+            if not redirection_url:
+                if "one.google.com" in page.url or "google.com/offer" in page.url:
+                    redirection_url = page.url
+                    break
+
+            page.wait_for_timeout(500)
 
         # Normalize URL
         if redirection_url:
@@ -1716,5 +1833,6 @@ class GeminiAIClaimer:
                 redirection_url = "https:" + redirection_url
             elif not redirection_url.startswith("http"):
                 redirection_url = "https://" + redirection_url
+            self.log(f"Captured Google One offer URL: {redirection_url}", "SUCCESS")
 
         return redirection_url

@@ -27,7 +27,7 @@ from playwright.sync_api import sync_playwright
 from claimer import GeminiAIClaimer
 
 CDP_PORT = 9222
-TARGET_URL = "https://internshala.com/student/personal_details"
+TARGET_URL = "https://internshala.com/student/preferences"
 
 SUPPORTED_BROWSERS = {
     "brave": {
@@ -203,10 +203,27 @@ def ensure_browser_session(chosen_browser: Optional[str] = None) -> bool:
         clean_browser_exit_state(selected_key)
         time.sleep(1.0)
 
+    # Prepare browser flags
+    extra_flags = []
+    if selected_key == "chrome":
+        real_user_data = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data")
+        debug_user_data = os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\DebugData")
+        if not os.path.exists(debug_user_data):
+            try:
+                subprocess.run(f'cmd /c mklink /J "{debug_user_data}" "{real_user_data}"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+        if os.path.exists(debug_user_data):
+            extra_flags.append(f"--user-data-dir={debug_user_data}")
+        # Automatically connect to Profile 2 (GHST) if available
+        if os.path.exists(os.path.join(real_user_data, "Profile 2")):
+            extra_flags.append("--profile-directory=Profile 2")
+
     # Launch with remote debugging
     cmd = [
         browser_info["path"],
         f"--remote-debugging-port={CDP_PORT}",
+        *extra_flags,
         "--restore-last-session",
         "--disable-session-crashed-bubble",
         TARGET_URL,
@@ -280,16 +297,19 @@ def run_recovery(browser_choice: Optional[str] = None):
             allow_manual_verification=True,
         )
 
-        print("\n-------------------------------------------------------")
-        print("  STEP 1: AUTO-FILLING PROFILE ONBOARDING DETAILS")
-        print("-------------------------------------------------------")
-        target_page.wait_for_timeout(1500)
-        success_profile = claimer._step_profile_details(target_page)
-        print(f"[Result] Profile details completion status: {success_profile}")
+        if "preferences" in target_page.url or not target_page.locator(":has-text(\"Let's get started\")").first.is_visible():
+            print("\n[*] Profile onboarding details already present or skipped, advancing to preferences...")
+        else:
+            print("\n-------------------------------------------------------")
+            print("  STEP 1: AUTO-FILLING PROFILE ONBOARDING DETAILS")
+            print("-------------------------------------------------------")
+            target_page.wait_for_timeout(1500)
+            success_profile = claimer._step_profile_details(target_page)
+            print(f"[Result] Profile details completion status: {success_profile}")
 
-        if not success_profile:
-            print("\n[ERROR] Form could not pass validation. Please inspect your open browser tab.")
-            return False
+            if not success_profile:
+                print("\n[ERROR] Form could not pass validation. Please inspect your open browser tab.")
+                return False
 
         print("\n-------------------------------------------------------")
         print("  STEP 2: AUTO-FILLING PREFERENCES")
