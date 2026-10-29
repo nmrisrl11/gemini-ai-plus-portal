@@ -1589,57 +1589,65 @@ class GeminiAIClaimer:
             return True
 
         # --- PHASE 1: Handle Step 1 ("Area(s) of interest") if present ---
-        phase1_interest_input = page.locator("input[placeholder*='Areas you want to work in' i], input[placeholder*='learn about' i]").first
+        # Dismiss any open modal dialog (such as the "Search for your preferred area of interest" popup)
+        try:
+            close_modal = page.locator(".modal:visible .close, .modal:visible [class*='close'], .modal:visible i, button:has-text('Done')").first
+            if close_modal.is_visible():
+                close_modal.click(force=True)
+                page.wait_for_timeout(600)
+        except Exception:
+            pass
+
+        # Detect Phase 1: presence of "Next" button or "Area(s) of interest"
         phase1_next_btn = page.locator("button:has-text('Next'), .next-button, #next_btn").first
+        is_phase1 = (
+            phase1_next_btn.is_visible()
+            or page.locator(":has-text('Area(s) of interest'), :has-text('career interests among')").first.is_visible()
+        )
 
-        if phase1_interest_input.is_visible() or phase1_next_btn.is_visible():
-            self.log("Handling Phase 1: Selecting career interest ('Web Development')...", "INFO")
+        if is_phase1:
+            self.log("Handling Phase 1: Selecting career interest chip ('Web Development')...", "INFO")
 
-            # Check if an active/selected chip is already present
-            has_selected_interest = page.evaluate("""() => {
-                const active = document.querySelector('.multiselect-input-chip-container .chip, .chips-container .chip.active, [class*="chip"][class*="active"], [class*="selected"]');
-                return active !== null;
-            }""")
-
-            if not has_selected_interest:
-                # 1. Try clicking Web Development chip
-                web_dev_chip = page.locator(".chips-container .chip, div.chip").filter(has_text=re.compile(r"^Web Development", re.I)).first
+            # 1. Click 'Web Development' chip (or first popular chip). NEVER click or focus the search input field!
+            clicked_chip = False
+            for target_name in ["Web Development", "Software Development", "Programming", "Frontend Development"]:
                 try:
-                    if web_dev_chip.is_visible():
-                        web_dev_chip.scroll_into_view_if_needed()
-                        web_dev_chip.click(force=True)
+                    chip_el = page.locator(".chips-container .chip, div.chip, [class*='chip']").filter(has_text=re.compile(rf"{target_name}", re.I)).first
+                    if chip_el.is_visible():
+                        chip_el.scroll_into_view_if_needed()
+                        chip_el.click(force=True)
+                        clicked_chip = True
                         page.wait_for_timeout(500)
+                        break
                 except Exception:
                     pass
 
-                # Fallback: type into search input
-                has_selected_interest = page.evaluate("""() => {
-                    return document.querySelector('.multiselect-input-chip-container .chip, .chips-container .chip.active') !== null;
+            if not clicked_chip:
+                # Direct JS click on chip containing '+' in main content
+                page.evaluate("""() => {
+                    const chips = Array.from(document.querySelectorAll('.chip, div[class*="chip"], span[class*="chip"]'));
+                    const targetChip = chips.find(c => {
+                        const t = (c.textContent || '').trim();
+                        return (t.includes('Web Development') || t.includes('+')) && !c.closest('footer') && !c.closest('header');
+                    });
+                    if (targetChip) {
+                        targetChip.scrollIntoView({ behavior: 'instant', block: 'center' });
+                        targetChip.click();
+                    }
                 }""")
-                if not has_selected_interest and phase1_interest_input.is_visible():
-                    try:
-                        phase1_interest_input.scroll_into_view_if_needed()
-                        phase1_interest_input.click()
-                        phase1_interest_input.fill("Web Development")
-                        page.wait_for_timeout(400)
-                        phase1_interest_input.press("Enter")
-                        page.wait_for_timeout(500)
-                    except Exception:
-                        pass
+                page.wait_for_timeout(500)
 
-            # Advance from Phase 1 to Phase 2 via 'Next' button
+            # 2. Click 'Next' button to advance to Phase 2
+            self.log("Clicking 'Next' button to advance to Phase 2...", "INFO")
             if phase1_next_btn.is_visible():
-                self.log("Clicking 'Next' to advance to Phase 2...", "INFO")
-                try:
-                    phase1_next_btn.scroll_into_view_if_needed()
-                    phase1_next_btn.click(force=True)
-                    page.wait_for_timeout(1500)
-                except Exception:
-                    page.evaluate("""() => {
-                        const btn = Array.from(document.querySelectorAll('button')).find(b => (b.textContent || '').trim().toLowerCase() === 'next');
-                        if (btn) btn.click();
-                    }""")
-                    page.wait_for_timeout(1500)
+                phase1_next_btn.scroll_into_view_if_needed()
+                phase1_next_btn.click(force=True)
+            else:
+                page.evaluate("""() => {
+                    const btn = Array.from(document.querySelectorAll('button')).find(b => (b.textContent || '').trim().toLowerCase() === 'next');
+                    if (btn) btn.click();
+                }""")
+            page.wait_for_timeout(2000)
 
         # --- PHASE 2: Opportunity Type & Work Mode ---
         # Wait for Phase 2 containers to appear
