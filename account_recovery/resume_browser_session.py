@@ -1,22 +1,23 @@
 """
-Multi-Mode Account Recovery & Profile Completion Tool
-=====================================================
-Safety Net Tool: Resumes uncompleted Internshala accounts and auto-claims
-the Google One 1-Year Gemini Plus promotion.
+Multi-Browser Account Recovery & Profile Completion Tool
+========================================================
+Safety Net Tool: Resumes uncompleted Internshala accounts directly inside an existing,
+authenticated browser session (Google Chrome, Brave Browser, or Microsoft Edge).
+Bypasses front-door login / CAPTCHA barriers by attaching to the active browser context
+over Chrome DevTools Protocol (CDP).
 
-Supports:
-1. Interactive Automated Browser (Playwright native launch - no port issues)
-2. Instant Cookie Injection (Copies session from already-open browser)
-3. CDP Connection (Attaches to existing port 9222 if active)
+Adapted with flexible browser discovery and graceful session restoration.
 """
 
 import os
 import sys
+import json
 import time
 import socket
-from typing import Optional, List, Dict
+import subprocess
+from typing import Dict, Optional
 
-# Resolve project root
+# Resolve project root (parent directory of account_recovery)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 if PROJECT_ROOT not in sys.path:
@@ -26,217 +27,215 @@ from playwright.sync_api import sync_playwright
 from claimer import GeminiAIClaimer
 
 CDP_PORT = 9222
-PREFERENCES_URL = "https://internshala.com/student/preferences"
-LOGIN_URL = "https://internshala.com/login/user"
-PROMO_URL = "https://internshala.com/google-gemini-ai-plus"
+TARGET_URL = "https://internshala.com/student/personal_details"
+
+SUPPORTED_BROWSERS = {
+    "brave": {
+        "name": "Brave Browser",
+        "process_name": "brave.exe",
+        "paths": [
+            r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+            r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\Application\brave.exe"),
+        ],
+        "pref_path": os.path.expandvars(r"%LOCALAPPDATA%\BraveSoftware\Brave-Browser\User Data\Default\Preferences"),
+    },
+    "chrome": {
+        "name": "Google Chrome",
+        "process_name": "chrome.exe",
+        "paths": [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"),
+        ],
+        "pref_path": os.path.expandvars(r"%LOCALAPPDATA%\Google\Chrome\User Data\Default\Preferences"),
+    },
+    "edge": {
+        "name": "Microsoft Edge",
+        "process_name": "msedge.exe",
+        "paths": [
+            r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+            os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\Application\msedge.exe"),
+        ],
+        "pref_path": os.path.expandvars(r"%LOCALAPPDATA%\Microsoft\Edge\User Data\Default\Preferences"),
+    },
+}
 
 
 def is_port_open(port: int = CDP_PORT, host: str = "127.0.0.1") -> bool:
-    """Check if remote debugging port is listening."""
+    """Check if the remote debugging port is open and listening."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(0.8)
+        sock.settimeout(1.0)
         return sock.connect_ex((host, port)) == 0
 
 
-def parse_cookie_string(cookie_raw: str, domain: str = ".internshala.com") -> List[Dict]:
-    """Parses a standard browser document.cookie string into Playwright cookie dicts."""
-    cookies = []
-    # Strip quotes if copied with quotes
-    clean = cookie_raw.strip().strip('"').strip("'")
-    for item in clean.split(";"):
-        item = item.strip()
-        if "=" in item:
-            name, value = item.split("=", 1)
-            cookies.append({
-                "name": name.strip(),
-                "value": value.strip(),
-                "domain": domain,
-                "path": "/"
-            })
-    return cookies
-
-
-def run_pipeline_on_page(page, context) -> Optional[str]:
-    """Runs preferences and claim pipeline on the target page."""
-    claimer = GeminiAIClaimer(
-        email="recovery@local",
-        password="",
-        mode="login",
-        headless=False,
-        allow_manual_verification=True,
-    )
-
-    print("\n-------------------------------------------------------")
-    print("  STEP 1: AUTO-FILLING PREFERENCES")
-    print("-------------------------------------------------------")
-    # Check if we need to navigate to preferences
-    if "preferences" not in page.url and "google-gemini-ai-plus" not in page.url:
-        print(f"[*] Navigating to {PREFERENCES_URL}...")
-        try:
-            page.goto(PREFERENCES_URL, wait_until="domcontentloaded", timeout=25000)
-            page.wait_for_timeout(2000)
-        except Exception as e:
-            print(f"[!] Navigation notice: {e}")
-
-    page.wait_for_timeout(1000)
-    success_pref = claimer._step_preferences(page)
-    print(f"[Result] Preferences completion status: {success_pref}")
-
-    if not success_pref:
-        print("\n[ERROR] Preferences step could not be completed.")
-        return None
-
-    print("\n-------------------------------------------------------")
-    print("  STEP 2: CLAIMING 12-MONTH FREE GEMINI PLUS PROMO LINK")
-    print("-------------------------------------------------------")
-    redemption_url = claimer._step_claim_gemini(page, context)
-    if redemption_url:
-        print("\n" + "=" * 68)
-        print("  [SUCCESS] GOOGLE ONE REDEMPTION LINK ACQUIRED SUCCESSFULLY!")
-        print("=" * 68)
-        print(f"\nRedemption Link:\n{redemption_url}\n")
-
-        # Save result locally
-        results_dir = os.path.join(PROJECT_ROOT, "results")
-        os.makedirs(results_dir, exist_ok=True)
-        out_file = os.path.join(results_dir, f"recovered_{int(time.time())}.txt")
-        try:
-            with open(out_file, "w", encoding="utf-8") as f:
-                f.write(f"Google One 1-Year Access Offer Link:\n{redemption_url}\n")
-            print(f"[OK] Link saved to: {out_file}")
-        except Exception:
-            pass
-        return redemption_url
-    else:
-        print("\n[!] Could not automatically capture the final redemption link.")
-        print("    Please check the open browser tab to complete the claim.")
-        return None
-
-
-def run_interactive_mode(email: str = "joybalboax2021@gmail.com", password: str = "joybalboax2021@gmail.com"):
-    """
-    Mode 1: Launches a visible browser directly via Playwright.
-    Auto-fills credentials, allows user to solve captcha/verify if needed,
-    then automatically takes over preferences and offer extraction.
-    """
-    print("\n" + "=" * 64)
-    print("  MODE 1: INTERACTIVE AUTOMATED BROWSER")
-    print("=" * 64)
-    print("[*] Launching browser window...")
-
-    with sync_playwright() as p:
-        # Launch Google Chrome or fallback to Chromium
-        try:
-            browser = p.chromium.launch(channel="chrome", headless=False)
-        except Exception:
-            try:
-                browser = p.chromium.launch(channel="msedge", headless=False)
-            except Exception:
-                browser = p.chromium.launch(headless=False)
-
-        context = browser.new_context()
-        page = context.new_page()
-
-        print(f"[*] Navigating to {LOGIN_URL}...")
-        page.goto(LOGIN_URL, wait_until="domcontentloaded")
-        page.wait_for_timeout(2000)
-
-        # Pre-fill credentials if login form is present
-        try:
-            email_field = page.locator("form#login_form input#email, input#email").first
-            pwd_field = page.locator("form#login_form input#password, input#password").first
-            if email_field.is_visible() and email:
-                email_field.fill(email)
-                print(f"[+] Filled account email: {email}")
-            if pwd_field.is_visible() and password:
-                pwd_field.fill(password)
-                print("[+] Filled password.")
-        except Exception:
-            pass
-
-        print("\n" + "-" * 60)
-        print("  ACTION REQUIRED: COMPLETE LOGIN IN THE OPEN BROWSER WINDOW")
-        print("  Click 'Login' or solve any security check if prompted.")
-        print("  As soon as you are logged in, the automation takes over automatically!")
-        print("-" * 60)
-
-        # Wait until user is authenticated
-        logged_in = False
-        start_wait = time.time()
-        while time.time() - start_wait < 120:
-            curr_url = page.url
-            if (
-                "preferences" in curr_url
-                or "personal_details" in curr_url
-                or "dashboard" in curr_url
-                or "google-gemini-ai-plus" in curr_url
-                or page.locator(".profile_icon, .is_icon_header_profile, :has-text('Free Gemini Access')").first.is_visible()
-            ):
-                logged_in = True
-                print("\n[+] Login detected! Automation taking over...")
+def get_installed_browsers() -> Dict[str, Dict]:
+    """Scans the system for installed supported browsers."""
+    installed = {}
+    for key, info in SUPPORTED_BROWSERS.items():
+        for path in info["paths"]:
+            if os.path.exists(path):
+                installed[key] = {**info, "path": path}
                 break
-            page.wait_for_timeout(1000)
-
-        if not logged_in:
-            print("\n[!] Login wait timed out. Please run the script again when ready.")
-            browser.close()
-            return False
-
-        # Run preferences and claim
-        res = run_pipeline_on_page(page, context)
-        print("\nKeeping browser open for 15 seconds to review...")
-        page.wait_for_timeout(15000)
-        browser.close()
-        return bool(res)
+    return installed
 
 
-def run_cookie_mode(cookie_input: str):
-    """
-    Mode 2: Injects session cookies into a clean Playwright instance.
-    Directly accesses preferences without login or captcha.
-    """
-    print("\n" + "=" * 64)
-    print("  MODE 2: INSTANT SESSION COOKIE INJECTION")
-    print("=" * 64)
-
-    cookies = parse_cookie_string(cookie_input)
-    if not cookies:
-        print("[ERROR] No valid cookies found in input.")
+def is_process_running(process_name: str) -> bool:
+    """Check if a specific process is currently running on Windows."""
+    try:
+        output = subprocess.check_output(
+            ["tasklist", "/FI", f"IMAGENAME eq {process_name}"],
+            text=True,
+            stderr=subprocess.DEVNULL
+        )
+        return process_name.lower() in output.lower()
+    except Exception:
         return False
 
-    print(f"[*] Parsed {len(cookies)} cookies. Launching browser with session...")
-    with sync_playwright() as p:
+
+def graceful_close_browser(process_name: str, timeout: float = 3.5):
+    """
+    Gracefully asks the browser windows to close so all tabs and session state are preserved.
+    Avoids abrupt termination which triggers the crash prompt.
+    """
+    # 1. Send graceful WM_CLOSE via taskkill (without /F)
+    try:
+        subprocess.run(
+            ["taskkill", "/IM", process_name],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    except Exception:
+        pass
+
+    # Wait for the browser process to write session files and exit cleanly
+    start = time.time()
+    while time.time() - start < timeout:
+        if not is_process_running(process_name):
+            return True
+        time.sleep(0.4)
+
+    # 2. If background helper processes linger after timeout, clean them up
+    try:
+        subprocess.run(
+            ["taskkill", "/IM", process_name, "/F"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        time.sleep(1.0)
+    except Exception:
+        pass
+    return True
+
+
+def clean_browser_exit_state(browser_key: str):
+    """Ensures the browser profile preferences don't trigger the 'crashed' dialog."""
+    pref_file = SUPPORTED_BROWSERS.get(browser_key, {}).get("pref_path")
+    if pref_file and os.path.exists(pref_file):
         try:
-            browser = p.chromium.launch(channel="chrome", headless=False)
+            with open(pref_file, "r", encoding="utf-8", errors="ignore") as f:
+                data = json.load(f)
+            modified = False
+            if "profile" in data:
+                if data["profile"].get("exit_type") != "Normal":
+                    data["profile"]["exit_type"] = "Normal"
+                    modified = True
+                if data["profile"].get("exited_cleanly") is False:
+                    data["profile"]["exited_cleanly"] = True
+                    modified = True
+            if modified:
+                with open(pref_file, "w", encoding="utf-8") as f:
+                    json.dump(data, f)
         except Exception:
-            browser = p.chromium.launch(headless=False)
-
-        context = browser.new_context()
-        context.add_cookies(cookies)
-
-        page = context.new_page()
-        print(f"[*] Navigating directly to {PREFERENCES_URL} with authenticated cookies...")
-        page.goto(PREFERENCES_URL, wait_until="domcontentloaded")
-        page.wait_for_timeout(2500)
-
-        res = run_pipeline_on_page(page, context)
-        print("\nKeeping browser open for 15 seconds to review...")
-        page.wait_for_timeout(15000)
-        browser.close()
-        return bool(res)
+            pass
 
 
-def run_cdp_mode():
-    """Mode 3: Attaches over Chrome DevTools Protocol (CDP port 9222)."""
-    print("\n" + "=" * 64)
-    print("  MODE 3: ATTACH TO RUNNING BROWSER OVER CDP (Port 9222)")
-    print("=" * 64)
+def ensure_browser_session(chosen_browser: Optional[str] = None) -> bool:
+    """
+    Ensures that a browser is active and listening on the CDP debugging port.
+    If not open, offers to launch or restart the chosen browser automatically.
+    """
+    if is_port_open(CDP_PORT):
+        print(f"[+] Active browser session detected on debug port {CDP_PORT}!")
+        return True
 
-    if not is_port_open(CDP_PORT):
-        print(f"[ERROR] Port {CDP_PORT} is not listening.")
-        print("Chrome must be launched with --remote-debugging-port=9222 --user-data-dir=... to use this mode.")
+    installed = get_installed_browsers()
+    if not installed:
+        print("[!] Could not auto-detect any supported browsers (Brave, Chrome, Edge).")
         return False
 
+    selected_key = chosen_browser
+    if not selected_key or selected_key not in installed:
+        # Check if an installed browser is already running
+        running_keys = [k for k, v in installed.items() if is_process_running(v["process_name"])]
+        if len(running_keys) == 1:
+            selected_key = running_keys[0]
+            print(f"[+] Detected active {installed[selected_key]['name']} session.")
+        else:
+            print("\n" + "=" * 60)
+            print("        BROWSER SELECTION & AUTO-CONNECT")
+            print("=" * 60)
+            print("Which browser are you logged into Internshala on?")
+            browser_keys = list(installed.keys())
+            for idx, key in enumerate(browser_keys, 1):
+                info = installed[key]
+                tag = " (Active)" if key in running_keys else ""
+                print(f"  [{idx}] {info['name']}{tag}")
+
+            choice_str = input(f"Enter choice [1-{len(browser_keys)}] (Default 1): ").strip()
+            try:
+                choice_idx = int(choice_str) - 1 if choice_str else 0
+                if 0 <= choice_idx < len(browser_keys):
+                    selected_key = browser_keys[choice_idx]
+                else:
+                    selected_key = browser_keys[0]
+            except Exception:
+                selected_key = browser_keys[0]
+
+    browser_info = installed[selected_key]
+    print(f"\n[+] Preparing {browser_info['name']} for CDP automation...")
+
+    # If the browser is running without debugging port, close it gracefully to re-open with debug port
+    if is_process_running(browser_info["process_name"]):
+        print(f"[*] Closing running {browser_info['name']} windows to apply debugging flag...")
+        graceful_close_browser(browser_info["process_name"])
+        clean_browser_exit_state(selected_key)
+        time.sleep(1.0)
+
+    # Launch with remote debugging
+    cmd = [
+        browser_info["path"],
+        f"--remote-debugging-port={CDP_PORT}",
+        "--restore-last-session",
+        "--disable-session-crashed-bubble",
+        TARGET_URL,
+    ]
+    print(f"[*] Launching {browser_info['name']} on port {CDP_PORT} (restoring open tabs)...")
+    try:
+        subprocess.Popen(cmd)
+        for _ in range(20):
+            time.sleep(0.5)
+            if is_port_open(CDP_PORT):
+                print(f"[+] {browser_info['name']} successfully connected on port {CDP_PORT}!")
+                return True
+        print("[!] Timed out waiting for browser debugging port.")
+        return False
+    except Exception as e:
+        print(f"[!] Error launching browser: {e}")
+        return False
+
+
+def run_recovery(browser_choice: Optional[str] = None):
+    print("================================================================")
+    print("  Internshala Safety Net: Multi-Browser Profile Completer")
+    print("================================================================")
+
+    if not ensure_browser_session(browser_choice):
+        print("[ERROR] Could not establish connection with browser debugging session.")
+        return False
+
+    print("\nConnecting automation engine to your active browser context...")
     with sync_playwright() as p:
         try:
             browser = p.chromium.connect_over_cdp(f"http://127.0.0.1:{CDP_PORT}")
@@ -247,66 +246,77 @@ def run_cdp_mode():
         context = browser.contexts[0]
         print(f"Connected! Inspecting {len(context.pages)} open tab(s)...")
 
+        # Find or navigate to personal_details / onboarding
         target_page = None
         for page in context.pages:
-            if "internshala.com" in page.url:
-                target_page = page
-                print(f"Found active Internshala tab: {page.url}")
-                break
+            try:
+                if "internshala.com" in page.url:
+                    target_page = page
+                    print(f"Found active Internshala tab: {page.url}")
+                    break
+            except Exception:
+                pass
 
         if not target_page:
+            print(f"Opening personal details tab at {TARGET_URL}...")
             target_page = context.new_page()
-            target_page.goto(PREFERENCES_URL, wait_until="domcontentloaded")
-
-        target_page.bring_to_front()
-        return bool(run_pipeline_on_page(target_page, context))
-
-
-def main():
-    print("=" * 68)
-    print("  Internshala Safety Net: Profile Completer & Offer Claimer")
-    print("=" * 68)
-    print("\nChoose recovery method:")
-    print("  [1] Interactive Automated Browser (Recommended - zero setup)")
-    print("      Opens a browser window with your credentials, waits for login,")
-    print("      then automatically auto-fills preferences and claims the promo.")
-    print("\n  [2] Instant Cookie Injection (Fastest - bypasses login completely)")
-    print("      Paste document.cookie from your already-open browser tab.")
-    print("\n  [3] Attach to Debug Port 9222 (CDP)")
-    print()
-
-    choice = input("Enter choice [1-3] (Default 1): ").strip()
-    if not choice:
-        choice = "1"
-
-    if choice == "1":
-        email = input("Enter account email (Default joybalboax2021@gmail.com): ").strip()
-        if not email:
-            email = "joybalboax2021@gmail.com"
-        pwd = input(f"Enter account password (Default {email}): ").strip()
-        if not pwd:
-            pwd = email
-        run_interactive_mode(email, pwd)
-
-    elif choice == "2":
-        print("\nHow to get cookies from your open Internshala tab:")
-        print("  1. In your open Chrome tab, press F12 (Developer Tools).")
-        print("  2. Click the 'Console' tab.")
-        print("  3. Type: document.cookie and press Enter.")
-        print("  4. Right-click and copy the output string.")
-        print()
-        cookie_str = input("Paste cookie string here: ").strip()
-        if cookie_str:
-            run_cookie_mode(cookie_str)
+            target_page.goto(TARGET_URL, wait_until="domcontentloaded")
+            target_page.wait_for_timeout(3000)
         else:
-            print("[!] No cookies provided.")
+            if (
+                "personal_details" not in target_page.url
+                and "onboarding" not in target_page.url
+                and "preferences" not in target_page.url
+            ):
+                print(f"Navigating tab to {TARGET_URL}...")
+                target_page.goto(TARGET_URL, wait_until="domcontentloaded")
+                target_page.wait_for_timeout(3000)
 
-    elif choice == "3":
-        run_cdp_mode()
+        claimer = GeminiAIClaimer(
+            email="browser_recovery@authenticated.local",
+            password="",
+            mode="login",
+            headless=False,
+            allow_manual_verification=True,
+        )
 
-    else:
-        run_interactive_mode()
+        print("\n-------------------------------------------------------")
+        print("  STEP 1: AUTO-FILLING PROFILE ONBOARDING DETAILS")
+        print("-------------------------------------------------------")
+        target_page.wait_for_timeout(1500)
+        success_profile = claimer._step_profile_details(target_page)
+        print(f"[Result] Profile details completion status: {success_profile}")
+
+        if not success_profile:
+            print("\n[ERROR] Form could not pass validation. Please inspect your open browser tab.")
+            return False
+
+        print("\n-------------------------------------------------------")
+        print("  STEP 2: AUTO-FILLING PREFERENCES")
+        print("-------------------------------------------------------")
+        target_page.wait_for_timeout(1500)
+        success_pref = claimer._step_preferences(target_page)
+        print(f"[Result] Preferences completion status: {success_pref}")
+
+        if not success_pref:
+            print("\n[ERROR] Preferences step encountered an issue.")
+            return False
+
+        print("\n-------------------------------------------------------")
+        print("  STEP 3: CLAIMING 12-MONTH FREE GEMINI PLUS PROMO LINK")
+        print("-------------------------------------------------------")
+        redemption_url = claimer._step_claim_gemini(target_page, context)
+        if redemption_url:
+            print("\n" + "=" * 64)
+            print("  [SUCCESS] GOOGLE ONE REDEMPTION LINK ACQUIRED SUCCESSFULLY!")
+            print("=" * 64)
+            print(f"\nRedemption Link:\n{redemption_url}\n")
+            return True
+        else:
+            print("\n[INFO] Please check your open browser tab to complete the final offer claim.")
+            return False
 
 
 if __name__ == "__main__":
-    main()
+    choice = sys.argv[1].lower().strip() if len(sys.argv) > 1 else None
+    run_recovery(choice)
