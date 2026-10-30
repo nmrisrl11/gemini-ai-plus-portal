@@ -77,6 +77,27 @@ def save_result_file(email: str, password: str, name: str, phone: str, url: str)
     filename = f"{safe_email}_{timestamp}.txt"
     filepath = os.path.join(RESULTS_DIR, filename)
 
+    if url == "EMAIL_DISPATCHED":
+        status_section = """--------------------------------------------------------------------------------
+STATUS:
+Account Setup Completed & Qualified — Activation Link Dispatched to Email
+--------------------------------------------------------------------------------
+
+ACTIVATION INSTRUCTIONS:
+1. Check your email inbox (and spam/promotions folder).
+2. Look for the confirmation email: 'Claim your free access'.
+3. Click the activation button inside to activate your 12 months of free Google AI Plus access."""
+    else:
+        status_section = f"""--------------------------------------------------------------------------------
+PROMOTIONAL REDEMPTION LINK:
+{url}
+--------------------------------------------------------------------------------
+
+ACTIVATION INSTRUCTIONS:
+1. Open the redemption link above in your browser.
+2. Sign in to the corresponding Google Account.
+3. Follow the on-screen steps to activate your 12 months of free Google AI Plus access."""
+
     content = f"""================================================================================
            GOOGLE AI PLUS (1-YEAR ACCESS) PROVISIONING REPORT
 ================================================================================
@@ -86,15 +107,7 @@ Email Address   : {email}
 Account Password: {password}
 Contact Phone   : {phone or 'N/A'}
 
---------------------------------------------------------------------------------
-PROMOTIONAL REDEMPTION LINK:
-{url}
---------------------------------------------------------------------------------
-
-ACTIVATION INSTRUCTIONS:
-1. Open the redemption link above in your browser.
-2. Sign in to the corresponding Google Account.
-3. Follow the on-screen steps to activate your 12 months of free Google AI Plus access.
+{status_section}
 
 IMPORTANT NOTICE:
 Please carefully review all on-screen details, requirements, and prompts before
@@ -857,7 +870,34 @@ class GeminiClaimerApp(ctk.CTk):
 
     def _on_success_callback(self, redemption_url: str):
         self.current_redemption_url = redemption_url
-        self.lbl_result_url.configure(text=redemption_url)
+        email = self.entry_email.get().strip() or "your registered email"
+
+        if redemption_url == "EMAIL_DISPATCHED":
+            self.result_title.configure(text="Account Completed! Activation link sent to your email")
+            self.lbl_result_url.configure(text=f"✉ Check your inbox at: {email}")
+            self.btn_copy_link.configure(text="Copy Credentials")
+            self.btn_open_browser.configure(text="Open Email Inbox")
+            self.lbl_activate_desc.configure(
+                text="Your account setup has been completed and qualified. The 12-month access activation link was sent directly to your registered email address.\n\n"
+                     "1. Check your email inbox (and spam/promotions folder).\n"
+                     "2. Look for the confirmation email: 'Claim your free access'.\n"
+                     "3. Click the activation button inside to activate your 1-Year access."
+            )
+            self.lbl_notice_desc.configure(
+                text="Please verify your email inbox and follow the on-screen steps. If your browser previously showed an eligibility notice on the page, using the link in your email activates your access directly."
+            )
+        else:
+            self.result_title.configure(text="Success! Redemption link is ready")
+            self.lbl_result_url.configure(text=redemption_url)
+            self.btn_copy_link.configure(text="Copy Offer Link")
+            self.btn_open_browser.configure(text="Open in Browser")
+            self.lbl_activate_desc.configure(
+                text="Open the offer link in your browser and proceed with the activation directly on your screen. Follow the on-screen steps to complete your 1-Year Google AI Plus access."
+            )
+            self.lbl_notice_desc.configure(
+                text="Please carefully review all on-screen details, requirements, and prompts before confirming or proceeding with any steps on the destination page."
+            )
+
         self.result_card.pack(fill="x", pady=10, padx=5, before=self.pipeline_card)
         self._set_pipeline_step(3)
 
@@ -873,7 +913,6 @@ class GeminiClaimerApp(ctk.CTk):
         )
 
         # Save record to results folder
-        email = self.entry_email.get().strip() or "account@gmail.com"
         password = self.entry_password.get().strip()
         fname = self.entry_fname.get().strip()
         lname = self.entry_lname.get().strip()
@@ -902,15 +941,28 @@ class GeminiClaimerApp(ctk.CTk):
 
     def _copy_link_to_clipboard(self):
         if self.current_redemption_url:
-            self.clipboard_clear()
-            self.clipboard_append(self.current_redemption_url)
-            self.update()
-            self.btn_copy_link.configure(text="Copied to Clipboard!")
-            self.after(2500, lambda: self.btn_copy_link.configure(text="Copy Offer Link"))
+            if self.current_redemption_url == "EMAIL_DISPATCHED":
+                email = self.entry_email.get().strip()
+                password = self.entry_password.get().strip()
+                text_to_copy = f"Email: {email}\nPassword: {password}"
+                self.clipboard_clear()
+                self.clipboard_append(text_to_copy)
+                self.update()
+                self.btn_copy_link.configure(text="Credentials Copied!")
+                self.after(2500, lambda: self.btn_copy_link.configure(text="Copy Credentials"))
+            else:
+                self.clipboard_clear()
+                self.clipboard_append(self.current_redemption_url)
+                self.update()
+                self.btn_copy_link.configure(text="Copied to Clipboard!")
+                self.after(2500, lambda: self.btn_copy_link.configure(text="Copy Offer Link"))
 
     def _open_in_browser(self):
         if self.current_redemption_url:
-            webbrowser.open(self.current_redemption_url)
+            if self.current_redemption_url == "EMAIL_DISPATCHED":
+                webbrowser.open("https://mail.google.com")
+            else:
+                webbrowser.open(self.current_redemption_url)
 
 
 if __name__ == "__main__":

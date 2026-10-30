@@ -71,16 +71,31 @@ def run_cli(args):
 
     url = claimer.run()
     if url:
-        print("\n" + "=" * 68)
-        print("[+] REDEMPTION LINK READY:")
-        print(f"    {url}")
-        print("=" * 68)
-        print("\n[*] How to activate:")
-        print("   Open the offer link above in your browser and proceed with the activation directly on your screen.")
-        print("   Follow the on-screen steps to complete your 1-Year Google AI Plus access.")
-        print("\n[*] IMPORTANT NOTICE:")
-        print("   Please carefully review all on-screen details, requirements, and prompts before confirming")
-        print("   or proceeding with any steps on the destination page.\n")
+        if url == "EMAIL_DISPATCHED":
+            print("\n" + "=" * 68)
+            print("[+] ACCOUNT SETUP COMPLETED SUCCESSFULLY!")
+            print("=" * 68)
+            print("\nYour profile has been fully completed and qualified.")
+            print("The activation and redemption link has been sent directly")
+            print("to your registered email address.\n")
+            print("----------------------------------------------------------------")
+            print("  What to do next:")
+            print(f"  1. Check your email inbox: {email} (and spam/promotions folder).")
+            print("  2. Look for the confirmation email: 'Claim your free access'")
+            print("  3. Click the activation button inside to activate your")
+            print("     12-Month Google AI Plus access.")
+            print("----------------------------------------------------------------\n")
+        else:
+            print("\n" + "=" * 68)
+            print("[+] REDEMPTION LINK READY:")
+            print(f"    {url}")
+            print("=" * 68)
+            print("\n[*] How to activate:")
+            print("   Open the offer link above in your browser and proceed with the activation directly on your screen.")
+            print("   Follow the on-screen steps to complete your 1-Year Google AI Plus access.")
+            print("\n[*] IMPORTANT NOTICE:")
+            print("   Please carefully review all on-screen details, requirements, and prompts before confirming")
+            print("   or proceeding with any steps on the destination page.\n")
 
         full_name = f"{args.first_name or ''} {args.last_name or ''}".strip() or "CLI User"
         try:

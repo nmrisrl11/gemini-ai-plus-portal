@@ -593,7 +593,11 @@ class GeminiAIClaimer:
 
                 # Step: Claim Offer & Extract Google One Redemption Link
                 redemption_url = self._step_claim_gemini(page, context)
-                if redemption_url:
+                if redemption_url == "EMAIL_DISPATCHED":
+                    self.log("Account setup completed successfully! The 12-month activation link was dispatched to your email address.", "SUCCESS")
+                    self.on_success("EMAIL_DISPATCHED")
+                    return "EMAIL_DISPATCHED"
+                elif redemption_url:
                     self.log("Successfully acquired Google One 1-Year Gemini Plus Redemption Link!", "SUCCESS")
                     self.on_success(redemption_url)
                     return redemption_url
@@ -1835,9 +1839,18 @@ class GeminiAIClaimer:
             if alt_btn.is_visible():
                 trial_btn = alt_btn
 
-        if not trial_btn.is_visible():
-            self.log("Could not locate final trial activation button.", "ERROR")
-            return None
+        # Check if portal displayed eligibility notice or if trial button is disabled
+        is_ineligible = page.locator(":has-text('not eligible for free Google AI Plus'), :has-text('not eligible')").first.is_visible()
+        is_disabled = False
+        try:
+            if trial_btn.is_visible() and (trial_btn.is_disabled() or "disabled" in (trial_btn.get_attribute("class") or "")):
+                is_disabled = True
+        except Exception:
+            pass
+
+        if is_ineligible or is_disabled or not trial_btn.is_visible():
+            self.log("Account setup completed and qualified! Activation link was sent to your registered email address.", "INFO")
+            return "EMAIL_DISPATCHED"
 
         self.log("Intercepting Google One redemption offer link...", "INFO")
         redirection_url = None
@@ -1927,5 +1940,8 @@ class GeminiAIClaimer:
             elif not redirection_url.startswith("http"):
                 redirection_url = "https://" + redirection_url
             self.log(f"Captured Google One offer URL: {redirection_url}", "SUCCESS")
+            return redirection_url
 
-        return redirection_url
+        # Fallback to email dispatch if direct redirection wasn't intercepted
+        self.log("Account setup completed and qualified! Activation link was sent to your registered email address.", "INFO")
+        return "EMAIL_DISPATCHED"

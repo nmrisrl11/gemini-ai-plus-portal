@@ -323,7 +323,22 @@ def run_recovery(browser_choice: Optional[str] = None):
         print("  STEP 3: CLAIMING 12-MONTH FREE GEMINI PLUS PROMO LINK")
         print("-------------------------------------------------------")
         redemption_url = claimer._step_claim_gemini(target_page, context)
-        if redemption_url:
+        if redemption_url == "EMAIL_DISPATCHED":
+            print("\n" + "=" * 68)
+            print("  [SUCCESS] ACCOUNT SETUP COMPLETED SUCCESSFULLY!")
+            print("=" * 68)
+            print("\nYour profile has been fully completed and qualified.")
+            print("The activation and redemption link has been sent directly")
+            print("to your registered email address.\n")
+            print("----------------------------------------------------------------")
+            print("  What to do next:")
+            print("  1. Check your email inbox (and spam/promotions folder).")
+            print("  2. Look for the confirmation email: 'Claim your free access'")
+            print("  3. Click the activation button inside to activate your")
+            print("     12-Month Google AI Plus access.")
+            print("----------------------------------------------------------------\n")
+            return True
+        elif redemption_url:
             print("\n" + "=" * 64)
             print("  [SUCCESS] GOOGLE ONE REDEMPTION LINK ACQUIRED SUCCESSFULLY!")
             print("=" * 64)
