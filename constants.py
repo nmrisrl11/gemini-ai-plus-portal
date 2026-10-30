@@ -26,7 +26,7 @@ ICONS_DIR = IMAGES_DIR  # Alias pointing to merged images directory
 APP_VERSION = "v1.0.0"
 DEVELOPER_GITHUB_URL = "https://github.com/nmrisrl11"
 
-SHOW_VISUAL_BROWSER_OPTION = not IS_PORTABLE
+SHOW_VISUAL_BROWSER_OPTION = True
 
 DEFAULT_ACTIVITY_TEXT = """================================================================================
   GOOGLE AI PLUS — 1-YEAR ACCESS PROVISIONER
