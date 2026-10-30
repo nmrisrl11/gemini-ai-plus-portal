@@ -160,9 +160,14 @@ A comprehensive unit test suite is maintained in `scratch/test_suite.py` contain
    - Scrolls down to `Claim the offer now` and clicks the primary CTA (`Start FREE 12 months trial`).
    - Watches newly opened tabs/popups (`context.on("page")`) and polls all context pages for up to 15 seconds.
    - If direct on-screen claim is ineligible or dispatched to email, gracefully returns `"EMAIL_DISPATCHED"` with brand-neutral next steps.
-3. **Multi-Browser Recovery Safety Net (`account_recovery/resume_browser_session.py`):**
+3. **Canonical URL Extractor (`clean_google_one_url`):**
+   - Automatically unescapes and cleans redirect wrappers (e.g. `accounts.google.com/v3/signin/...continue=...`) to yield permanent, clean `https://one.google.com/offer/<CODE>` URLs.
+   - Eliminates session tokens (`dsh=S-...`) to prevent multi-device expiration or login loops.
+4. **Multi-Browser Recovery Safety Net (`account_recovery/resume_browser_session.py`):**
    - Attaches directly over CDP (port 9222) to any supported browser (Brave, Chrome, Edge).
    - Brand-neutral UI and automatic saving of credentials / redemption URLs to `results/`.
+5. **Headless Execution in Portable Build:**
+   - Standalone executable automatically defaults to silent background execution (`SHOW_VISUAL_BROWSER_OPTION = not IS_PORTABLE`), keeping the UX clean and desktop-native.
 
 ---
 

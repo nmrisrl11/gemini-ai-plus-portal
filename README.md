@@ -63,6 +63,8 @@ Manually claiming educational and student promotional subscriptions typically re
 
 - **Zero-Bloat Automation**: Attaches to system-installed Google Chrome or Microsoft Edge channels without forcing 400MB browser downloads.
 - **Dynamic Execution Mode**: Operates in full headed visual mode during development, automatically switching to clean background headless execution when packaged as a portable executable.
+- **Canonical Link Extraction**: Automatically resolves nested authentication redirections and session tokens, yielding permanent, clean `https://one.google.com/offer/<CODE>` redemption links.
+- **Dual Delivery State Handling**: Seamlessly handles direct on-screen offer claims as well as accounts where the promotional grant is dispatched directly to the registered email address.
 - **Strict 6-Digit OTP Dialog**: Keystroke-level numeric enforcement, sanitized clipboard pasting, and automatic validation for email codes.
 - **Security & CAPTCHA Safety**: Proactively detects Cloudflare Turnstile, interstitials, reCAPTCHA, and server-side challenges, safely stopping to protect accounts from lockouts.
 - **Modular Component Architecture**: Separated dialog controllers for About, Voluntary Support, OTP Verification, and Diagnostics.
@@ -162,8 +164,8 @@ flowchart LR
 1. **Profile Setup**: Enter your target `@gmail.com` address or click **Randomize Info** to generate fresh placeholder student demographics.
 2. **Start Provisioning**: Click **Get 1-Year Access Link**. The system connects to the promotional gateway.
 3. **Verify Email**: When prompted by the dialog, enter the 6-digit verification code received in your Gmail inbox.
-4. **Copy Offer Link**: Once extracted, your unique Google One promotional redemption URL appears on screen.
-5. **Redeem on Google**: Click **Copy Offer Link** or **Open in Browser** to complete activation directly on your Google account.
+4. **Copy Offer Link or Email Access**: Once extracted, your unique Google One promotional redemption URL appears on screen in canonical format (`https://one.google.com/offer/<CODE>`). If the partner dispatches the grant directly via email, clear in-app guidance will direct you to the activation message in your inbox.
+5. **Redeem on Google**: Click **Copy Offer Link** or **Open in Browser** to complete activation directly on your Google account. Both credentials and links are safely saved to the `results/` folder.
 
 ---
 
