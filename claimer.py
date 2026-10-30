@@ -1578,7 +1578,7 @@ class GeminiAIClaimer:
             page.wait_for_timeout(1000)
 
         if not is_on_pref:
-            self.log("Navigating directly to preferences page (https://internshala.com/user_preference/preferences)...", "INFO")
+            self.log("Navigating to career preferences portal...", "INFO")
             try:
                 page.goto("https://internshala.com/user_preference/preferences", wait_until="domcontentloaded", timeout=25000)
                 page.wait_for_timeout(2000)
@@ -1836,7 +1836,7 @@ class GeminiAIClaimer:
             return None
 
         promo_url = "https://internshala.com/google-gemini-ai-plus"
-        self.log(f"Accessing Gemini promotional portal ({promo_url})...", "INFO")
+        self.log("Accessing promotional portal...", "INFO")
         try:
             page.goto(promo_url, wait_until="domcontentloaded", timeout=30000)
             page.wait_for_timeout(2500)

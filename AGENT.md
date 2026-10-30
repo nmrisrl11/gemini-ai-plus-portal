@@ -148,20 +148,21 @@ A comprehensive unit test suite is maintained in `scratch/test_suite.py` contain
 & ".\.venv\Scripts\python.exe" "C:\Users\NOMER ISRAEL\.gemini\antigravity\brain\40fad3d3-ae4e-4e51-aeda-7286d50bea21\scratch\test_suite.py"
 ```
 
-### D. Career Preferences Synchronization & Claim Extraction (Fixed October 2026)
+### D. Career Preferences Synchronization & Claim Extraction (Updated October 2026)
 1. **Preferences Onboarding (`_step_preferences`):**
-   - Fixed silent pass-through where `is_visible()` evaluated to `False` while the page was redirecting from `personal_details` to `https://internshala.com/student/preferences`.
-   - Added explicit awaiting of `/student/preferences` URL and container visibility (`:has-text('Your preferences')`).
-   - Added regex-based interest pill matching (`^Web Development`, `^Software Development`, etc.) with fallback to direct search input.
-   - Handled subsequent preference questions (opportunity type, work mode) and clicking the primary blue `Next` / `Find me opportunities` buttons.
-2. **Offer Link Capture & Loop Prevention (`_step_claim_gemini`):**
-   - Intercepts outgoing network requests (`context.on("request")`) and responses for `one.google.com` or `google.com/offer`.
-   - Continuously watches newly opened tabs/popups (`context.on("page")`) and polls all context pages for up to 15 seconds.
-   - Extracts redirect parameters (`url=...`) from intermediate tracking URLs.
-   - Prevents looping back to `_step_profile_details` when the profile is already 100% completed.
+   - Eliminates input clicking to avoid triggering the "Search for your preferred area of interest" modal.
+   - Clicks interest chips directly (`Web Development +`), then clicks `Next` to advance to Phase 2.
+   - In Phase 2, clicks `Internships +` and `Work from home +` chips, then submits via `Find me opportunities`.
+   - Verified with automatic retries and multi-attempt validation.
+2. **Offer Link Capture & Dual-Stage Claim (`_step_claim_gemini`):**
+   - Intercepts outgoing network requests (`context.on("request")`), responses, and JSON API payloads for `one.google.com` or `google.com/offer` right from Step 0.
+   - Directly clicks hero card `Claim now` button using exact text match to trigger section scroll and unlock the offer.
+   - Scrolls down to `Claim the offer now` and clicks the primary CTA (`Start FREE 12 months trial`).
+   - Watches newly opened tabs/popups (`context.on("page")`) and polls all context pages for up to 15 seconds.
+   - If direct on-screen claim is ineligible or dispatched to email, gracefully returns `"EMAIL_DISPATCHED"` with brand-neutral next steps.
 3. **Multi-Browser Recovery Safety Net (`account_recovery/resume_browser_session.py`):**
-   - Bypasses Chrome 124+ CDP security restriction (`DevTools remote debugging requires a non-default data directory`) by mounting an automated Directory Junction (`DebugData`).
-   - Automatically discovers and selects the user's active authenticated Chrome profile (e.g. `Profile 2` / `GHST`).
+   - Attaches directly over CDP (port 9222) to any supported browser (Brave, Chrome, Edge).
+   - Brand-neutral UI and automatic saving of credentials / redemption URLs to `results/`.
 
 ---
 

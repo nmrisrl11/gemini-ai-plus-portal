@@ -7,9 +7,9 @@ echo =======================================================
 echo.
 echo This recovery tool attaches directly to your active,
 echo authenticated browser session to complete uncompleted
-echo Internshala profiles without re-login or CAPTCHA blocks.
+echo user profiles without re-login or verification blocks.
 echo.
-echo Which browser are you logged into Internshala on?
+echo Which browser has your active session?
 echo   [1] Brave Browser
 echo   [2] Google Chrome
 echo   [3] Microsoft Edge

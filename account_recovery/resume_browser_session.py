@@ -1,9 +1,9 @@
 """
 Multi-Browser Account Recovery & Profile Completion Tool
 ========================================================
-Safety Net Tool: Resumes uncompleted Internshala accounts directly inside an existing,
+Safety Net Tool: Resumes uncompleted user accounts directly inside an existing,
 authenticated browser session (Google Chrome, Brave Browser, or Microsoft Edge).
-Bypasses front-door login / CAPTCHA barriers by attaching to the active browser context
+Bypasses front-door login / verification barriers by attaching to the active browser context
 over Chrome DevTools Protocol (CDP).
 
 Adapted with flexible browser discovery and graceful session restoration.
@@ -252,13 +252,13 @@ def run_recovery(browser_choice: Optional[str] = None):
             try:
                 if "internshala.com" in page.url:
                     target_page = page
-                    print(f"Found active session tab: {page.url}")
+                    print("Found active authenticated session tab.")
                     break
             except Exception:
                 pass
 
         if not target_page:
-            print(f"Opening preferences tab at {TARGET_URL}...")
+            print("Opening career preferences portal...")
             target_page = context.new_page()
             target_page.goto(TARGET_URL, wait_until="domcontentloaded")
             target_page.wait_for_timeout(3000)
@@ -270,7 +270,7 @@ def run_recovery(browser_choice: Optional[str] = None):
                 and "internships" not in target_page.url
                 and "google-gemini-ai-plus" not in target_page.url
             ):
-                print(f"Navigating tab to {TARGET_URL}...")
+                print("Navigating tab to career preferences portal...")
                 target_page.goto(TARGET_URL, wait_until="domcontentloaded")
                 target_page.wait_for_timeout(3000)
 
