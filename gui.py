@@ -70,6 +70,9 @@ def save_result_file(email: str, password: str, name: str, phone: str, url: str)
     """Saves provisioning credentials and generated redemption link into results folder."""
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
+    from claimer import clean_google_one_url
+    url = clean_google_one_url(url)
+
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
     date_display = time.strftime("%Y-%m-%d %H:%M:%S")
 
@@ -869,6 +872,8 @@ class GeminiClaimerApp(ctk.CTk):
         messagebox.showerror("Notice", formatted, parent=self)
 
     def _on_success_callback(self, redemption_url: str):
+        from claimer import clean_google_one_url
+        redemption_url = clean_google_one_url(redemption_url)
         self.current_redemption_url = redemption_url
         email = self.entry_email.get().strip() or "your registered email"
 

@@ -161,6 +161,38 @@ def normalize_error_message(raw_msg: str, for_log: bool = False) -> str:
     return clean
 
 
+def clean_google_one_url(url: str) -> str:
+    """
+    Extracts the canonical, clean Google One redemption offer URL
+    (e.g., https://one.google.com/offer/ABC123XYZ) if wrapped inside
+    Google Accounts sign-in redirects (continue=...), OAuth flows, or partner tracking URLs.
+    """
+    if not url or url == "EMAIL_DISPATCHED":
+        return url
+
+    # 1. Direct regex match on one.google.com/offer/<CODE>
+    match = re.search(r"https?://(?:one\.google\.com|www\.google\.com/one)/offer/([A-Za-z0-9_-]+)", url)
+    if match:
+        return f"https://one.google.com/offer/{match.group(1)}"
+
+    # 2. Extract from URL query parameters (continue, followup, url, redirect_url, target)
+    try:
+        from urllib.parse import parse_qs, urlparse, unquote
+        parsed = urlparse(url)
+        qs = parse_qs(parsed.query)
+        for param in ("continue", "followup", "url", "redirect", "redirect_url", "target"):
+            if param in qs:
+                for raw_val in qs[param]:
+                    unquoted = unquote(raw_val)
+                    m = re.search(r"https?://(?:one\.google\.com|www\.google\.com/one)/offer/([A-Za-z0-9_-]+)", unquoted)
+                    if m:
+                        return f"https://one.google.com/offer/{m.group(1)}"
+    except Exception:
+        pass
+
+    return url
+
+
 class GeminiAIClaimer:
     def __init__(
         self,
@@ -2048,12 +2080,13 @@ class GeminiAIClaimer:
                 break
             page.wait_for_timeout(500)
 
-        # Normalize URL
+        # Normalize and clean URL
         if redirection_url:
             if redirection_url.startswith("//"):
                 redirection_url = "https:" + redirection_url
             elif not redirection_url.startswith("http"):
                 redirection_url = "https://" + redirection_url
+            redirection_url = clean_google_one_url(redirection_url)
             self.log(f"Captured Google One offer URL: {redirection_url}", "SUCCESS")
             return redirection_url
 

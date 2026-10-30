@@ -323,6 +323,8 @@ def run_recovery(browser_choice: Optional[str] = None):
         print("  STEP 3: CLAIMING 12-MONTH FREE GEMINI PLUS PROMO LINK")
         print("-------------------------------------------------------")
         redemption_url = claimer._step_claim_gemini(target_page, context)
+        from claimer import clean_google_one_url
+        redemption_url = clean_google_one_url(redemption_url)
 
         # Attempt to detect session email for saving record
         session_email = None
