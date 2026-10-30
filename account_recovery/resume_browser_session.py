@@ -176,7 +176,7 @@ def ensure_browser_session(chosen_browser: Optional[str] = None) -> bool:
             print("\n" + "=" * 60)
             print("        BROWSER SELECTION & AUTO-CONNECT")
             print("=" * 60)
-            print("Which browser are you logged into Internshala on?")
+            print("Which browser has your active session?")
             browser_keys = list(installed.keys())
             for idx, key in enumerate(browser_keys, 1):
                 info = installed[key]
@@ -228,7 +228,7 @@ def ensure_browser_session(chosen_browser: Optional[str] = None) -> bool:
 
 def run_recovery(browser_choice: Optional[str] = None):
     print("================================================================")
-    print("  Internshala Safety Net: Multi-Browser Profile Completer")
+    print("  Account Recovery Safety Net: Profile Completer")
     print("================================================================")
 
     if not ensure_browser_session(browser_choice):
@@ -252,7 +252,7 @@ def run_recovery(browser_choice: Optional[str] = None):
             try:
                 if "internshala.com" in page.url:
                     target_page = page
-                    print(f"Found active Internshala tab: {page.url}")
+                    print(f"Found active session tab: {page.url}")
                     break
             except Exception:
                 pass
@@ -323,7 +323,32 @@ def run_recovery(browser_choice: Optional[str] = None):
         print("  STEP 3: CLAIMING 12-MONTH FREE GEMINI PLUS PROMO LINK")
         print("-------------------------------------------------------")
         redemption_url = claimer._step_claim_gemini(target_page, context)
+
+        # Attempt to detect session email for saving record
+        session_email = None
+        try:
+            session_email = target_page.evaluate("""() => {
+                const el = document.querySelector('[data-email], .user_email, .profile-email, .dropdown-menu .email');
+                if (el && el.textContent) return el.textContent.trim();
+                return null;
+            }""")
+        except Exception:
+            pass
+        session_email = session_email or "recovered_account@user.local"
+
         if redemption_url == "EMAIL_DISPATCHED":
+            try:
+                from gui import save_result_file
+                save_result_file(
+                    email=session_email,
+                    password="(Existing Authenticated Session)",
+                    name="Recovered Account",
+                    phone="N/A",
+                    url="EMAIL_DISPATCHED",
+                )
+            except Exception:
+                pass
+
             print("\n" + "=" * 68)
             print("  [SUCCESS] ACCOUNT SETUP COMPLETED SUCCESSFULLY!")
             print("=" * 68)
@@ -339,6 +364,19 @@ def run_recovery(browser_choice: Optional[str] = None):
             print("----------------------------------------------------------------\n")
             return True
         elif redemption_url:
+            try:
+                from gui import save_result_file
+                saved_path = save_result_file(
+                    email=session_email,
+                    password="(Existing Authenticated Session)",
+                    name="Recovered Account",
+                    phone="N/A",
+                    url=redemption_url,
+                )
+                print(f"[+] Saved credentials and redemption link to: {saved_path}")
+            except Exception:
+                pass
+
             print("\n" + "=" * 64)
             print("  [SUCCESS] GOOGLE ONE REDEMPTION LINK ACQUIRED SUCCESSFULLY!")
             print("=" * 64)

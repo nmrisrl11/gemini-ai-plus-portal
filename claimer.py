@@ -1773,6 +1773,68 @@ class GeminiAIClaimer:
         if self._is_stopped:
             return None
 
+        # 1. Attach network and page listeners immediately to capture popups or API redirects
+        redirection_url = None
+        captured_urls = []
+        opened_pages = []
+
+        def on_req(req):
+            u = req.url
+            if "one.google.com" in u or "google.com/offer" in u:
+                captured_urls.append(u)
+
+        def on_resp(resp):
+            try:
+                u = resp.url
+                if "one.google.com" in u or "google.com/offer" in u:
+                    captured_urls.append(u)
+                if "internshala.com" in u and ("offer" in u or "claim" in u or "gemini" in u or "redirect" in u):
+                    try:
+                        data = resp.json()
+                        def scan_json(val):
+                            if isinstance(val, str) and ("one.google.com" in val or "google.com/offer" in val):
+                                captured_urls.append(val)
+                            elif isinstance(val, dict):
+                                for v in val.values(): scan_json(v)
+                            elif isinstance(val, list):
+                                for item in val: scan_json(item)
+                        scan_json(data)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        context.on("request", on_req)
+        context.on("response", on_resp)
+        context.on("page", lambda p: opened_pages.append(p))
+
+        def check_for_redirection_url() -> Optional[str]:
+            # Check all open pages in context
+            for p in list(context.pages) + opened_pages:
+                try:
+                    p_url = p.url
+                    if "one.google.com" in p_url or "google.com/offer" in p_url:
+                        return p_url
+                    if "internshala.com" in p_url and "redirect" in p_url:
+                        from urllib.parse import parse_qs, urlparse
+                        qs = parse_qs(urlparse(p_url).query)
+                        for qk in ("url", "target", "redirect_url"):
+                            if qk in qs and "google.com" in qs[qk][0]:
+                                return qs[qk][0]
+                except Exception:
+                    pass
+            # Check captured network URLs
+            for u in captured_urls:
+                if "one.google.com" in u or "google.com/offer" in u:
+                    return u
+            # Check current page URL
+            try:
+                if "one.google.com" in page.url or "google.com/offer" in page.url:
+                    return page.url
+            except Exception:
+                pass
+            return None
+
         promo_url = "https://internshala.com/google-gemini-ai-plus"
         self.log(f"Accessing Gemini promotional portal ({promo_url})...", "INFO")
         try:
@@ -1796,18 +1858,10 @@ class GeminiAIClaimer:
                 gemini_menu_link.click()
                 page.wait_for_timeout(3000)
 
-        # Check for 'Claim now'
-        claim_now_btn = page.locator("button:has-text('Claim now'), a:has-text('Claim now'), :has-text('Claim now')").first
-        try:
-            if claim_now_btn.is_visible():
-                self.log("Triggering offer activation...", "INFO")
-                claim_now_btn.click()
-                page.wait_for_timeout(2000)
-        except Exception:
-            pass
-
         # Check for 'Complete now' if profile requires final completion
-        complete_btn = page.locator("button:has-text('Complete now'), a:has-text('Complete now')").first
+        complete_btn = page.locator("button, a, .btn").filter(has_text=re.compile(r"^Complete now$", re.I)).first
+        if not complete_btn.is_visible():
+            complete_btn = page.locator("button:has-text('Complete now'), a:has-text('Complete now')").first
         try:
             if complete_btn.is_visible():
                 self.log("Profile completion prompt detected on offer page. Completing onboarding profile...", "INFO")
@@ -1824,113 +1878,150 @@ class GeminiAIClaimer:
         except Exception:
             pass
 
-        # Locate 'Start FREE 12 months trial'
-        self.log("Activating 12-Month Free Trial...", "INFO")
-        trial_btn = page.locator(
-            "button.claim_offer_cta, button:has-text('Start FREE 12 months trial'), a:has-text('Start FREE 12 months trial'), :has-text('Start FREE 12 months trial')"
-        ).first
+        # Check for hero card 'Claim now' CTA button
+        claim_now_btn = page.locator(
+            "button, a, div[role='button'], span[role='button'], .btn"
+        ).filter(has_text=re.compile(r"^Claim now$", re.I)).first
 
-        if not trial_btn.is_visible():
-            page.wait_for_timeout(2000)
+        if not claim_now_btn.is_visible():
+            claim_now_btn = page.locator(
+                "button:has-text('Claim now'), a:has-text('Claim now'), .btn:has-text('Claim now')"
+            ).first
 
-        if not trial_btn.is_visible():
-            # Check if there is an alternative claim button on page
-            alt_btn = page.locator("button:has-text('Claim'), a:has-text('Claim'), button:has-text('Redeem'), a:has-text('Redeem')").first
-            if alt_btn.is_visible():
-                trial_btn = alt_btn
-
-        # Check if portal displayed eligibility notice or if trial button is disabled
-        is_ineligible = page.locator(":has-text('not eligible for free Google AI Plus'), :has-text('not eligible')").first.is_visible()
-        is_disabled = False
-        try:
-            if trial_btn.is_visible() and (trial_btn.is_disabled() or "disabled" in (trial_btn.get_attribute("class") or "")):
-                is_disabled = True
-        except Exception:
-            pass
-
-        if is_ineligible or is_disabled or not trial_btn.is_visible():
-            self.log("Account setup completed and qualified! Activation link was sent to your registered email address.", "INFO")
-            return "EMAIL_DISPATCHED"
-
-        self.log("Intercepting Google One redemption offer link...", "INFO")
-        redirection_url = None
-
-        # Network interceptor for redemption URL
-        captured_urls = []
-        def on_req(req):
-            u = req.url
-            if "one.google.com" in u or "google.com/offer" in u:
-                captured_urls.append(u)
-
-        def on_resp(resp):
-            u = resp.url
-            if "one.google.com" in u or "google.com/offer" in u:
-                captured_urls.append(u)
-
-        context.on("request", on_req)
-        context.on("response", on_resp)
-
-        opened_pages = []
-        context.on("page", lambda p: opened_pages.append(p))
-
-        # Check if button directly has href
-        try:
-            btn_href = trial_btn.get_attribute("href")
-            if btn_href and ("one.google.com" in btn_href or "google.com" in btn_href):
-                redirection_url = btn_href
-        except Exception:
-            pass
-
-        if not redirection_url:
+        if claim_now_btn.is_visible():
             try:
+                href = claim_now_btn.get_attribute("href")
+                if href and ("one.google.com" in href or "google.com/offer" in href):
+                    redirection_url = href
+            except Exception:
+                pass
+
+            if not redirection_url:
+                self.log("Triggering offer activation via 'Claim now'...", "INFO")
                 try:
-                    with context.expect_page(timeout=8000) as new_page_info:
-                        trial_btn.click()
-                    new_p = new_page_info.value
+                    with context.expect_page(timeout=4000) as p_info:
+                        claim_now_btn.click()
+                    new_p = p_info.value
                     page.wait_for_timeout(1000)
                     if "one.google.com" in new_p.url or "google.com/offer" in new_p.url:
                         redirection_url = new_p.url
                 except Exception:
-                    trial_btn.click()
-            except Exception as e:
-                self.log(f"Trial button click trigger notice: {e}", "WARNING")
+                    try:
+                        claim_now_btn.click(force=True)
+                    except Exception:
+                        pass
+                page.wait_for_timeout(1500)
+
+        redirection_url = redirection_url or check_for_redirection_url()
+
+        # Scroll down to ensure lower offer section is in DOM and viewport
+        try:
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight / 2)")
+            page.wait_for_timeout(800)
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            page.wait_for_timeout(800)
+        except Exception:
+            pass
+
+        # Locate 'Start FREE 12 months trial' CTA
+        trial_btn = page.locator(
+            "button.claim_offer_cta, a.claim_offer_cta, "
+            "button:has-text('Start FREE 12 months trial'), a:has-text('Start FREE 12 months trial'), "
+            ".btn:has-text('Start FREE 12 months trial'), [role='button']:has-text('Start FREE 12 months trial')"
+        ).first
+
+        if not trial_btn.is_visible():
+            trial_btn = page.locator(
+                "button, a, div[role='button'], .btn"
+            ).filter(has_text=re.compile(r"Start FREE 12 months trial|Claim the offer now|Start trial", re.I)).first
+
+        if not trial_btn.is_visible():
+            # Check alternative claim/redeem buttons
+            alt_btn = page.locator("button, a, .btn").filter(has_text=re.compile(r"^(Claim|Redeem|Activate|Start FREE)$", re.I)).first
+            if alt_btn.is_visible():
+                trial_btn = alt_btn
+
+        if trial_btn.is_visible():
+            try:
+                trial_btn.scroll_into_view_if_needed()
+                page.wait_for_timeout(500)
+            except Exception:
+                pass
+
+        # Check if portal displayed eligibility notice or if trial button is disabled
+        is_ineligible = page.locator(
+            ":text-matches('not eligible for free Google AI Plus', 'i'), :text-matches('You\\'re not eligible', 'i')"
+        ).first.is_visible()
+
+        is_disabled = False
+        try:
+            if trial_btn.is_visible() and (trial_btn.is_disabled() or "disabled" in (trial_btn.get_attribute("class") or "").lower()):
+                is_disabled = True
+        except Exception:
+            pass
+
+        # If eligible and trial button is actionable, click it
+        if not redirection_url and trial_btn.is_visible() and not is_disabled:
+            self.log("Activating 12-Month Free Trial button...", "INFO")
+            try:
+                btn_href = trial_btn.get_attribute("href")
+                if btn_href and ("one.google.com" in btn_href or "google.com/offer" in btn_href):
+                    redirection_url = btn_href
+            except Exception:
+                pass
+
+            if not redirection_url:
+                try:
+                    try:
+                        with context.expect_page(timeout=10000) as new_page_info:
+                            trial_btn.click()
+                        new_p = new_page_info.value
+                        new_p.wait_for_load_state("domcontentloaded", timeout=8000)
+                        if "one.google.com" in new_p.url or "google.com/offer" in new_p.url:
+                            redirection_url = new_p.url
+                    except Exception:
+                        try:
+                            trial_btn.click(force=True)
+                        except Exception:
+                            page.evaluate("(el) => el.click()", trial_btn.element_handle())
+                except Exception as e:
+                    self.log(f"Trial button click trigger notice: {e}", "WARNING")
+
+        # Handle any in-page modal dialog that may have opened
+        try:
+            modal = page.locator(".modal:visible, [role='dialog']:visible").first
+            if modal.is_visible():
+                modal_links = modal.locator("a[href*='google.com'], a[href*='one.google.com']")
+                for i in range(modal_links.count()):
+                    href = modal_links.nth(i).get_attribute("href")
+                    if href and ("one.google.com" in href or "google.com/offer" in href):
+                        redirection_url = href
+                        break
+
+                if not redirection_url:
+                    modal_action = modal.locator(
+                        "button, a, .btn"
+                    ).filter(has_text=re.compile(r"Claim|Confirm|Continue|Redeem|Activate|Proceed", re.I)).first
+                    if modal_action.is_visible():
+                        try:
+                            with context.expect_page(timeout=6000) as modal_p_info:
+                                modal_action.click()
+                            m_p = modal_p_info.value
+                            if "one.google.com" in m_p.url or "google.com/offer" in m_p.url:
+                                redirection_url = m_p.url
+                        except Exception:
+                            modal_action.click(force=True)
+        except Exception:
+            pass
+
+        self.log("Intercepting Google One redemption offer link...", "INFO")
 
         # Poll all open pages and captured events for up to 15 seconds
         start_poll = time.time()
         while time.time() - start_poll < 15:
+            redirection_url = redirection_url or check_for_redirection_url()
             if redirection_url:
                 break
-
-            # 1. Check all open pages
-            for p in list(context.pages) + opened_pages:
-                try:
-                    p_url = p.url
-                    if "one.google.com" in p_url or "google.com/offer" in p_url:
-                        redirection_url = p_url
-                        break
-                    if "internshala.com" in p_url and "redirect" in p_url:
-                        from urllib.parse import parse_qs, urlparse
-                        qs = parse_qs(urlparse(p_url).query)
-                        for qk in ("url", "target", "redirect_url"):
-                            if qk in qs and "google.com" in qs[qk][0]:
-                                redirection_url = qs[qk][0]
-                                break
-                except Exception:
-                    pass
-                if redirection_url:
-                    break
-
-            # 2. Check captured network URLs
-            if not redirection_url and captured_urls:
-                redirection_url = captured_urls[-1]
-                break
-
-            # 3. Check current page URL
-            if not redirection_url:
-                if "one.google.com" in page.url or "google.com/offer" in page.url:
-                    redirection_url = page.url
-                    break
-
             page.wait_for_timeout(500)
 
         # Normalize URL
