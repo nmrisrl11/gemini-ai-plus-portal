@@ -909,7 +909,18 @@ class GeminiAIClaimer:
             self.on_error(normalize_error_message("429 Too Many Requests", for_log=False))
             return False
 
-        # 3. Check for sign up with email button if present
+        # 3. Check if verification challenge / interstitial is active prior to form interaction
+        pre_challenge = self._detect_verification_challenge(page)
+        if pre_challenge:
+            if not self.headless and self.allow_manual_verification:
+                if not self._wait_for_manual_verification(page, pre_challenge):
+                    return False
+            else:
+                self.log("Verification challenge detected; manual action required.", "ERROR")
+                self.on_error("Security verification challenge detected by the portal.")
+                return False
+
+        # 4. Check for sign up with email button if present
         signup_email_btn = page.locator("#email-button-container, button:has-text('Sign up with Email'), a:has-text('Sign up with Email')").first
         try:
             if signup_email_btn.is_visible():
@@ -918,7 +929,7 @@ class GeminiAIClaimer:
         except Exception:
             pass
 
-        # 4. Wait for form elements to be visible and enabled
+        # 5. Wait for form elements to be visible and enabled
         email_field = page.locator("form#registration-form input#email, input#email").first
         try:
             email_field.wait_for(state="visible", timeout=10000)
@@ -991,6 +1002,19 @@ class GeminiAIClaimer:
             if "/verify_email" in page.url or page.locator(":has-text('Verify your email')").first.is_visible():
                 self.log("Account created! Awaiting email OTP code...", "SUCCESS")
                 return True
+
+            challenge = self._detect_verification_challenge(page)
+            if challenge:
+                if not self.headless and self.allow_manual_verification:
+                    if not self._wait_for_manual_verification(page, challenge):
+                        return False
+                    if "/verify_email" in page.url or page.locator(":has-text('Verify your email')").first.is_visible():
+                        self.log("Account created! Awaiting email OTP code...", "SUCCESS")
+                        return True
+                else:
+                    self.log("Verification challenge detected; manual action required.", "ERROR")
+                    self.on_error("Security verification challenge detected by the portal.")
+                    return False
 
             # Check if this email was already registered but unconfirmed - resend OTP link available
             unconfirmed_link = page.locator("a[href*='verify_unconfirmed_login'], #error_modal a[href*='verify']").first
