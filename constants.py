@@ -23,9 +23,12 @@ else:
 IMAGES_DIR = os.path.join(PROJECT_ROOT, "images")
 ICONS_DIR = IMAGES_DIR  # Alias pointing to merged images directory
 
-APP_VERSION = "v1.0.0"
+APP_VERSION = "v1.0.1"
 DEVELOPER_GITHUB_URL = "https://github.com/nmrisrl11"
 
+# Visual browser checkbox control:
+# In development/source mode: SHOW_VISUAL_BROWSER_OPTION is True by default.
+# In portable standalone .exe mode: automatically set to False (runs headless in background).
 SHOW_VISUAL_BROWSER_OPTION = not IS_PORTABLE
 
 DEFAULT_ACTIVITY_TEXT = """================================================================================

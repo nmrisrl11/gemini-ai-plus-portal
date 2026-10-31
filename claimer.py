@@ -3,6 +3,8 @@ Gemini AI Plus (1-Year Access) Engine
 Handles partner registration, verification, profile onboarding, and Google One redemption link extraction.
 """
 
+import os
+import glob
 import time
 import random
 import string
@@ -152,6 +154,21 @@ def normalize_error_message(raw_msg: str, for_log: bool = False) -> str:
         return (
             "The login operation timed out.\n\n"
             "The server did not respond or navigation did not reach the authenticated state. Please try again."
+        )
+
+    # 9. Chromium browser engine not found
+    if (
+        "no compatible chromium browser" in lower
+        or "executable doesn't exist" in lower
+        or "could not find browser" in lower
+    ):
+        if for_log:
+            return "No compatible Chromium browser found on system."
+        return (
+            "No compatible Chromium browser was found on your system.\n\n"
+            "This application uses an installed Chromium browser (Google Chrome, Microsoft Edge, or Brave) to automate access.\n\n"
+            "• Please ensure Google Chrome, Microsoft Edge, or Brave Browser is installed.\n"
+            "• Once a browser is available, click 'Get 1-Year Access Link' again."
         )
 
     # Strip prefixes or raw HTML tags
@@ -514,6 +531,100 @@ class GeminiAIClaimer:
 
         return None
 
+    def _launch_browser(self, p):
+        """
+        Intelligently discovers and launches any available Chromium browser on the user's system.
+        Tries in order:
+        1. Google Chrome channel ('chrome')
+        2. Microsoft Edge channel ('msedge' - pre-installed on 100% of Windows 10/11 machines)
+        3. Direct executable scan for Brave, Chrome, and Edge on standard Windows paths
+        4. Any host Playwright browser cache in %LOCALAPPDATA%\\ms-playwright
+        5. Bundled Playwright Chromium fallback (for development mode)
+        """
+        # 1. Try Google Chrome channel
+        try:
+            browser = p.chromium.launch(channel="chrome", headless=self.headless)
+            self.log("Browser session initialized using Google Chrome.", "INFO")
+            return browser
+        except Exception:
+            pass
+
+        # 2. Try Microsoft Edge channel (Built-in on Windows 10/11)
+        try:
+            browser = p.chromium.launch(channel="msedge", headless=self.headless)
+            self.log("Google Chrome channel not found. Initialized using Microsoft Edge.", "INFO")
+            return browser
+        except Exception:
+            pass
+
+        # 3. Direct executable scan for installed Chromium browsers
+        import glob
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        prog_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+        prog_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+
+        direct_candidates = [
+            # Brave Browser
+            (os.path.join(prog_files, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"), "Brave Browser"),
+            (os.path.join(prog_files_x86, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"), "Brave Browser (32-bit)"),
+            (os.path.join(local_app_data, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"), "Brave Browser (User)"),
+            # Google Chrome direct paths (in case registry channel lookup missed it)
+            (os.path.join(prog_files, "Google", "Chrome", "Application", "chrome.exe"), "Google Chrome"),
+            (os.path.join(prog_files_x86, "Google", "Chrome", "Application", "chrome.exe"), "Google Chrome (32-bit)"),
+            (os.path.join(local_app_data, "Google", "Chrome", "Application", "chrome.exe"), "Google Chrome (User)"),
+            # Microsoft Edge direct paths (in case registry channel lookup missed it)
+            (os.path.join(prog_files_x86, "Microsoft", "Edge", "Application", "msedge.exe"), "Microsoft Edge"),
+            (os.path.join(prog_files, "Microsoft", "Edge", "Application", "msedge.exe"), "Microsoft Edge (64-bit)"),
+            (os.path.join(local_app_data, "Microsoft", "Edge", "Application", "msedge.exe"), "Microsoft Edge (User)"),
+            # Other Chromium browsers
+            (os.path.join(local_app_data, "Programs", "Opera", "launcher.exe"), "Opera"),
+            (os.path.join(prog_files, "Opera", "launcher.exe"), "Opera"),
+            (os.path.join(local_app_data, "Vivaldi", "Application", "vivaldi.exe"), "Vivaldi"),
+            (os.path.join(prog_files, "Vivaldi", "Application", "vivaldi.exe"), "Vivaldi"),
+        ]
+
+        for exe_path, label in direct_candidates:
+            if exe_path and os.path.exists(exe_path):
+                try:
+                    browser = p.chromium.launch(executable_path=exe_path, headless=self.headless)
+                    self.log(f"Browser session initialized using {label}.", "INFO")
+                    return browser
+                except Exception:
+                    pass
+
+        # 4. Check for host Playwright browser cache in %LOCALAPPDATA%\\ms-playwright
+        if local_app_data:
+            pw_dir = os.path.join(local_app_data, "ms-playwright")
+            if os.path.exists(pw_dir):
+                pw_candidates = []
+                for pattern in ["**/chrome.exe", "**/chrome-headless-shell.exe"]:
+                    for match in glob.glob(os.path.join(pw_dir, pattern), recursive=True):
+                        if os.path.exists(match):
+                            pw_candidates.append(match)
+                for pw_exe in pw_candidates:
+                    try:
+                        browser = p.chromium.launch(executable_path=pw_exe, headless=self.headless)
+                        self.log("Browser session initialized using system Playwright browser cache.", "INFO")
+                        return browser
+                    except Exception:
+                        pass
+
+        # 5. Final fallback: try default bundled launch (works in unbundled dev mode)
+        try:
+            browser = p.chromium.launch(headless=self.headless)
+            self.log("Browser session initialized using bundled Chromium.", "INFO")
+            return browser
+        except Exception:
+            pass
+
+        # If all candidates fail, raise a clean descriptive exception
+        err_msg = (
+            "No compatible Chromium browser was found on your system.\n\n"
+            "Please ensure Google Chrome, Microsoft Edge, or Brave Browser is installed and try again."
+        )
+        self.log(err_msg, "ERROR")
+        raise RuntimeError(err_msg)
+
     def run(self) -> Optional[str]:
         """Main execution workflow."""
         if not self.email.endswith("@gmail.com"):
@@ -539,11 +650,7 @@ class GeminiAIClaimer:
             context = None
             page = None
             try:
-                try:
-                    browser = p.chromium.launch(channel="chrome", headless=self.headless)
-                except Exception:
-                    self.log("Falling back to bundled Chromium engine...", "WARNING")
-                    browser = p.chromium.launch(headless=self.headless)
+                browser = self._launch_browser(p)
 
                 context = browser.new_context(
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
@@ -642,7 +749,11 @@ class GeminiAIClaimer:
                 if self._is_stopped:
                     self.log("Session stopped.", "INFO")
                     return None
-                err_msg = f"Unexpected error occurred: {str(e)}"
+                raw_e = str(e)
+                if "No compatible Chromium browser" in raw_e or "executable doesn't exist" in raw_e.lower():
+                    err_msg = raw_e
+                else:
+                    err_msg = f"Unexpected error occurred: {raw_e}"
                 self.log(err_msg, "ERROR")
                 self.on_error(err_msg)
                 return None

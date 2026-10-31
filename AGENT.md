@@ -2,7 +2,7 @@
 
 > **Document Type:** Developer & Agent Handoff / Architecture Blueprint  
 > **Application:** Google AI Plus — 1-Year Access Portal  
-> **Current Version:** `v1.0.0` (Private Desktop Edition)  
+> **Current Version:** `v1.0.1` (Private Desktop Edition)  
 > **Repository:** `https://github.com/nmrisrl11/gemini-ai-plus-claimer.git`  
 > **Primary Developer:** `@nmrisrl11`  
 > **Last Updated:** October 2026  
@@ -21,9 +21,9 @@ The software replaces tedious manual navigation, regional demographic formatting
 
 - **Language:** Python 3.10 – 3.12 (64-bit)
 - **GUI Framework:** `customtkinter` (Dark Mode, blue theme)
-- **Automation Engine:** `playwright.sync_api` (Zero-bloat system channel attachment: `chrome` $\to$ fallback `msedge`)
+- **Automation Engine:** `playwright.sync_api` (Intelligent multi-browser cascade: Chrome $\to$ Edge $\to$ Brave/Chromium direct scan $\to$ Playwright cache)
 - **Image Processing:** `pillow` (PIL) for QR rendering, icon manipulation, ray-cast alpha matting, and ICO generation
-- **Packaging:** `pyinstaller` (Produces single-file, zero-dependency `dist\Google AI Plus Portal v1.0.0.exe`)
+- **Packaging:** `pyinstaller` (Produces single-file, zero-dependency `dist\Google AI Plus Portal v1.0.1.exe`)
 - **OS Platform:** Windows 10 & Windows 11 (requires Win32 Shell API for `AppUserModelID` taskbar binding)
 
 ---
@@ -63,7 +63,7 @@ gemini-ai-plus-claimer/
 │   └── run_account_recovery.bat     # 1-click recovery launcher
 ├── results/                         # Output archive for generated credentials & links (.gitignored)
 └── dist/                            # Production output
-    └── Google AI Plus Portal v1.0.0.exe  # Standalone portable application (61.4 MB)
+    └── Google AI Plus Portal v1.0.1.exe  # Standalone portable application (61.4 MB)
 ```
 
 ---
@@ -123,8 +123,13 @@ Upstream servers return raw JSON or unformatted English errors. `normalize_error
   - `self.iconphoto(True, *self._taskbar_icons)` feeds 256, 64, 48, 32, 24, 16px high-DPI RGBA bitmaps directly to Windows DWM.
   - Small icon layers (16–48px) are sharpened with adaptive UnsharpMasking in `convert_icon.py` to prevent blur on 125%/150% scaled displays.
 
-### 4. Zero-Bloat Playwright Channel Attachment
-- Uses `channel="chrome"` with fallback to `channel="msedge"`.
+### 4. Intelligent Multi-Browser Discovery Cascade
+- Uses `_launch_browser(self, p)` in `claimer.py` with 5 tiers:
+  1. `channel="chrome"`
+  2. `channel="msedge"` (Built-in on 100% of Windows 10/11 machines)
+  3. Direct executable scan for Brave, Chrome, Edge, Opera, and Vivaldi in Program Files, Program Files (x86), and %LOCALAPPDATA%
+  4. Local Playwright cache in `%LOCALAPPDATA%\ms-playwright`
+  5. Fallback `p.chromium.launch()` for unbundled source development
 - Bypasses the need to download or bundle the 400MB Chromium binary with the portable `.exe`.
 
 ### 5. UI Cleanliness & Copywriting Rules
@@ -183,7 +188,7 @@ To build a fresh portable standalone `.exe`:
    - `--add-data="images;images"`
    - `--collect-all="customtkinter"`
    - `--collect-all="playwright"`
-3. Output executable: `dist\Google AI Plus Portal v1.0.0.exe` (61.4 MB).
+3. Output executable: `dist\Google AI Plus Portal v1.0.1.exe` (61.4 MB).
 
 ---
 
