@@ -4,7 +4,7 @@
 
 **Automated 12-Month Gemini Advanced & Google AI Plus Offer Link Generator**
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?style=flat-square)](https://github.com/nmrisrl11)
+[![Version](https://img.shields.io/badge/version-v1.0.1-blue.svg?style=flat-square)](https://github.com/nmrisrl11)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6.svg?style=flat-square)](https://microsoft.com/windows)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?style=flat-square)](https://python.org)
 [![Automation](https://img.shields.io/badge/engine-Playwright-2EAD33.svg?style=flat-square)](https://playwright.dev)
@@ -61,7 +61,7 @@ Manually claiming educational and student promotional subscriptions typically re
 
 ## Key Features
 
-- **Zero-Bloat Automation**: Attaches to system-installed Google Chrome or Microsoft Edge channels without forcing 400MB browser downloads.
+- **Multi-Browser Zero-Bloat Automation**: Intelligent discovery cascade supporting Google Chrome, Microsoft Edge (natively pre-installed on 100% of Windows 10/11 systems), Brave Browser, Opera, or Vivaldi without forcing 400MB hermetic browser downloads.
 - **Dynamic Execution Mode**: Operates in full headed visual mode during development, automatically switching to clean background headless execution when packaged as a portable executable.
 - **Canonical Link Extraction**: Automatically resolves nested authentication redirections and session tokens, yielding permanent, clean `https://one.google.com/offer/<CODE>` redemption links.
 - **Dual Delivery State Handling**: Seamlessly handles direct on-screen offer claims as well as accounts where the promotional grant is dispatched directly to the registered email address.
@@ -78,7 +78,7 @@ Manually claiming educational and student promotional subscriptions typically re
 | Component | Requirement |
 | :--- | :--- |
 | **Operating System** | Windows 10 or Windows 11 (64-bit) |
-| **Browser** | Google Chrome or Microsoft Edge (pre-installed on Windows) |
+| **Browser** | Google Chrome, Microsoft Edge (pre-installed), or Brave Browser |
 | **Python** *(Source only)* | Python 3.10, 3.11, or 3.12 (Not needed for the portable `.exe`) |
 | **Google Account** | A standard personal `@gmail.com` account in good standing |
 
@@ -91,7 +91,7 @@ Manually claiming educational and student promotional subscriptions typically re
 No installation or technical setup required. Double-click the pre-compiled binary:
 
 ```cmd
-dist\Google AI Plus Portal v1.0.0.exe
+dist\Google AI Plus Portal v1.0.1.exe
 ```
 
 - **No Python Required**: Includes all bundled dependencies.
@@ -147,7 +147,7 @@ To compile a single-file portable binary from the latest source code:
 - **Via Batch Script**: Double-click [`build_portable.bat`](build_portable.bat)
 - **Via Python**: Run `python build_portable.py`
 
-The resulting standalone executable will be written to `dist\Google AI Plus Portal v1.0.0.exe`.
+The resulting standalone executable will be written to `dist\Google AI Plus Portal v1.0.1.exe`.
 
 ---
 
