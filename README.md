@@ -95,7 +95,8 @@ dist\Google AI Plus Portal v1.0.1.exe
 ```
 
 - **No Python Required**: Includes all bundled dependencies.
-- **Portable**: Can be run from any folder, USB drive, or Desktop.
+- **Portable & Compact**: Self-contained executable compressed with high-performance Zstandard (`~44.6 MB`).
+- **Hardened Security**: Compiled into native x86-64 machine code via Nuitka C translation (tamper-proof; immune to `pyinstxtractor` and Python bytecode decompilers).
 - **Silent Background Execution**: Browser automation runs headless in the background.
 
 ---
@@ -142,8 +143,17 @@ python main.py --cli --email "youraccount@gmail.com" --password "YourSecurePassw
 
 ### 4. Rebuilding the Portable Executable
 
-To compile a single-file portable binary from the latest source code:
+You can compile a single-file portable binary from the latest source code using either builder:
 
+#### Option A: Hardened Native C Binary (Recommended — Anti-Reverse Engineering)
+Compiles Python directly into native C machine code with GCC and packages it with Zstandard compression (`~44.6 MB`):
+- **Via Batch Script**: Double-click [`build_nuitka.bat`](build_nuitka.bat)
+- **Via Python**: Run `python build_nuitka.py`
+
+*Benefits: Zero `.pyc` bytecode inside; cannot be unpacked by `pyinstxtractor`.*
+
+#### Option B: Standard Portable Build (PyInstaller Fallback)
+Packages Python bytecode into a standard PyInstaller archive (`~61.4 MB`):
 - **Via Batch Script**: Double-click [`build_portable.bat`](build_portable.bat)
 - **Via Python**: Run `python build_portable.py`
 
@@ -196,11 +206,14 @@ gemini-ai-plus-claimer/
 ├── gui.py                           # CustomTkinter UI with high-DPI taskbar mipmaps
 ├── main.py                          # Dual GUI/CLI entry point with AppUserModelID
 ├── convert_icon.py                  # Multi-resolution ICO & transparent PNG generator
-├── build_portable.bat               # 1-click standalone portable compiler
-├── build_portable.py                # Scripted portable builder
+├── build_nuitka.bat                 # 1-click hardened native C compiler (Nuitka + Zstd)
+├── build_nuitka.py                  # Scripted native C builder (tamper-proof binary)
+├── build_portable.bat               # 1-click fallback portable compiler (PyInstaller)
+├── build_portable.py                # Scripted PyInstaller builder
 ├── run.bat                          # 1-click Windows source launcher
 ├── requirements.txt                 # Python dependencies
 ├── README.md                        # Documentation
+├── AGENT.md                         # Architecture blueprint & handoff guide
 ├── images/                          # High-DPI icons, logos, and donation QRs
 │   ├── app_icon.ico                 # Multi-layer sharpened icon (16x16 to 256x256)
 │   ├── app_icon.png                 # 512x512 transparent PNG
@@ -217,7 +230,9 @@ gemini-ai-plus-claimer/
 │   ├── README.md                    # Recovery instructions
 │   ├── resume_browser_session.py    # CDP session attach script
 │   └── run_account_recovery.bat     # 1-click recovery launcher
-└── results/                         # Local storage for saved credentials & claim links
+├── results/                         # Local storage for saved credentials & claim links
+└── dist/                            # Production output
+    └── Google AI Plus Portal v1.0.1.exe  # Hardened native standalone binary (44.6 MB)
 ```
 
 ---

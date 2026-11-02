@@ -3,3 +3,5 @@ pillow==13.0.0
 playwright==1.64.1
 darkdetect==0.8.0
 pyinstaller>=6.0.0
+nuitka>=4.0.0
+zstandard>=0.23.0

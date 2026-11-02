@@ -8,13 +8,17 @@ import sys
 # Auto-detect build environment:
 # - In development/source mode: SHOW_VISUAL_BROWSER_OPTION is True by default.
 # - In portable standalone .exe mode: automatically set to False (runs headless in background).
-IS_PORTABLE = getattr(sys, "frozen", False)
+IS_PORTABLE = getattr(sys, "frozen", False) or "__compiled__" in globals()
 
-if IS_PORTABLE:
+if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     # PyInstaller temporary extraction folder for bundled assets
-    PROJECT_ROOT = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
-    # Persistent directory next to the standalone executable for output credentials and logs
+    PROJECT_ROOT = sys._MEIPASS
     EXE_DIR = os.path.dirname(sys.executable)
+    RESULTS_DIR = os.path.join(EXE_DIR, "results")
+elif IS_PORTABLE:
+    # Nuitka onefile / standalone mode
+    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+    EXE_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
     RESULTS_DIR = os.path.join(EXE_DIR, "results")
 else:
     PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))

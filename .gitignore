@@ -22,10 +22,14 @@ venv.bak/
 results/
 *.txt.bak
 
-# PyInstaller & Packaging artifacts
+# PyInstaller & Nuitka packaging artifacts
 build/
 dist/
 *.spec
+*.build/
+*.dist/
+*.onefile-build/
+nuitka-crash-report.xml
 
 # Playwright engine temporary data & traces
 .playwright/
