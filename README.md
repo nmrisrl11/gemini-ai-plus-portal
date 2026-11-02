@@ -24,6 +24,7 @@
 - [Overview](#overview)
 - [What It Does](#what-it-does)
 - [Key Features](#key-features)
+- [Tech Stack & Tools](#tech-stack--tools)
 - [System Requirements](#system-requirements)
 - [Quick Start](#quick-start)
   - [1. Standalone Portable Executable (Recommended)](#1-standalone-portable-executable-recommended)
@@ -70,6 +71,25 @@ Manually claiming educational and student promotional subscriptions typically re
 - **Modular Component Architecture**: Separated dialog controllers for About, Voluntary Support, OTP Verification, and Diagnostics.
 - **Built-in Diagnostics Suite (<kbd>F12</kbd>)**: Test edge cases (OTP recovery loops, server rejections, and link banners) without consuming Gmail accounts.
 - **High-DPI Desktop Branding**: Sharp, anti-aliased multi-resolution icon assets (`16x16` up to `256x256`) with Windows taskbar AppUserModelID integration.
+
+---
+
+## Tech Stack & Tools
+
+| Category | Technology / Tool | Version | Purpose & Implementation |
+| :--- | :--- | :--- | :--- |
+| **Core Runtime** | **Python** | `3.10 – 3.12` | Application engine, asynchronous queues, and CLI parsing |
+| **GUI Framework** | **CustomTkinter** | `6.0.0` | Modern dark-themed user interface, responsive layout & custom modal dialogs |
+| **Theme Detection** | **Darkdetect** | `0.8.0` | OS-level light/dark system color scheme detection |
+| **Browser Engine** | **Microsoft Playwright** | `1.49+` | Fast multi-browser automation, form synchronization & HTTP/DOM event interception |
+| **Session Recovery** | **Chrome DevTools Protocol (CDP)** | Standard | Direct browser context attachment (port 9222) for interrupted session resumption |
+| **Native C Compiler** | **Nuitka** | `4.3+` | Python-to-C source code translation yielding tamper-proof native PE binaries |
+| **C Backend Toolchain** | **MinGW-w64 GCC** | `15.2.0` | Multi-threaded parallel C compiler (`--jobs=4`) generating x86-64 machine instructions |
+| **Compilation Cache** | **ccache** | Built-in | Compiler object cache for sub-2-minute incremental rebuilds |
+| **Payload Compression** | **Facebook Zstandard (`zstd`)** | `0.25.0` | High-ratio payload compression (26.3% ratio) reducing binary to `~44.6 MB` with instant startup |
+| **Image & Icon Engine** | **Pillow (PIL)** | `11.0+` | Multi-resolution ICO generation (`16x16`–`256x256`), adaptive unsharp masking & donation QR rendering |
+| **Windows Shell API** | **Win32 Shell (`ctypes`)** | Native | Explicit `AppUserModelID` registration for proper Windows taskbar grouping and pinning |
+| **Fallback Packager** | **PyInstaller** | `6.0+` | Secondary standard bytecode packager fallback (`build_portable.bat`) |
 
 ---
 
