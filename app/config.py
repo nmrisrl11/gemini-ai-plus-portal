@@ -1,5 +1,5 @@
 """
-Shared constants and application configurations for Google AI Plus Portal.
+Shared constants and application configurations for Gemini AI Plus Portal.
 """
 
 import os
@@ -29,6 +29,7 @@ ASSETS_DIR = os.path.join(PROJECT_ROOT, "assets")
 IMAGES_DIR = os.path.join(ASSETS_DIR, "images")
 ICONS_DIR = IMAGES_DIR  # Alias pointing to merged images directory
 
+APP_NAME = "Gemini AI Plus Portal"
 APP_VERSION = "v1.0.1"
 DEVELOPER_GITHUB_URL = "https://github.com/nmrisrl11"
 
@@ -37,7 +38,7 @@ DEVELOPER_GITHUB_URL = "https://github.com/nmrisrl11"
 # In portable standalone .exe mode: automatically set to False (runs headless in background).
 SHOW_VISUAL_BROWSER_OPTION = not IS_PORTABLE
 
-DEFAULT_ACTIVITY_TEXT = """Ready to provision a 1-Year Google AI Plus access link.
+DEFAULT_ACTIVITY_TEXT = """Ready to provision a 1-Year Gemini AI Plus access link.
 
   1. Enter your target @gmail.com address above.
   2. (Optional) Expand Generated Profile to review or customize details.

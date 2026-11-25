@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
-title Google AI Plus Portal — Portable Packager (PyInstaller)
+title Gemini AI Plus Portal — Portable Packager (PyInstaller)
 
 echo ================================================================================
-echo    GOOGLE AI PLUS PORTAL - STANDALONE PORTABLE BUILDER (PYINSTALLER)
+echo    GEMINI AI PLUS PORTAL - STANDALONE PORTABLE BUILDER (PYINSTALLER)
 echo ================================================================================
 echo.
 

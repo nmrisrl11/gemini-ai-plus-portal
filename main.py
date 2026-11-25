@@ -1,5 +1,5 @@
 """
-Google AI Plus (1-Year Free) Access Portal - Application Entry Point
+Gemini AI Plus Portal — Application Entry Point
 Supports modern GUI interface and headless CLI execution.
 Includes auto-environment resolution to ensure virtual environment dependencies are always used.
 """
@@ -11,7 +11,7 @@ import ctypes
 
 if sys.platform == "win32":
     try:
-        myappid = "nmrisrl11.googleaiplus.claimerportal.v100"
+        myappid = "nmrisrl11.geminiaiplus.portal.v100"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except Exception:
         pass
@@ -46,7 +46,7 @@ from app.core.claimer import GeminiAIClaimer, generate_secure_password
 
 def run_cli(args):
     print("=" * 68)
-    print("   Google AI Plus (1-Year Access) Portal (CLI Mode)")
+    print("   Gemini AI Plus Portal (CLI Mode)")
     print("=" * 68)
 
     email = args.email
@@ -83,7 +83,7 @@ def run_cli(args):
             print(f"  1. Check your email inbox: {email} (and spam/promotions folder).")
             print("  2. Look for the confirmation email: 'Claim your free access'")
             print("  3. Click the activation button inside to activate your")
-            print("     12-Month Google AI Plus access.")
+            print("     12-Month Gemini AI Plus access.")
             print("----------------------------------------------------------------\n")
         else:
             print("\n" + "=" * 68)
@@ -92,7 +92,7 @@ def run_cli(args):
             print("=" * 68)
             print("\n[*] How to activate:")
             print("   Open the offer link above in your browser and proceed with the activation directly on your screen.")
-            print("   Follow the on-screen steps to complete your 1-Year Google AI Plus access.")
+            print("   Follow the on-screen steps to complete your 1-Year Gemini AI Plus access.")
             print("\n[*] IMPORTANT NOTICE:")
             print("   Please carefully review all on-screen details, requirements, and prompts before confirming")
             print("   or proceeding with any steps on the destination page.\n")
@@ -114,7 +114,7 @@ def run_cli(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Google AI Plus (1-Year Access) Portal")
+    parser = argparse.ArgumentParser(description="Gemini AI Plus Portal")
     parser.add_argument("--cli", action="store_true", help="Run in command-line mode without GUI")
     parser.add_argument("--email", type=str, help="Your valid @gmail.com address (CLI mode)")
     parser.add_argument("--password", type=str, help="Account password (optional in CLI mode)")

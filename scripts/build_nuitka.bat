@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
-title Google AI Plus Portal — Hardened Native Builder (Nuitka)
+title Gemini AI Plus Portal — Hardened Native Builder (Nuitka)
 
 echo ================================================================================
-echo    GOOGLE AI PLUS PORTAL - NATIVE C COMPILER BUILDER (NUITKA)
+echo    GEMINI AI PLUS PORTAL - NATIVE C COMPILER BUILDER (NUITKA)
 echo ================================================================================
 echo.
 

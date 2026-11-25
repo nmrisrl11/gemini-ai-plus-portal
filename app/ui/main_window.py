@@ -1,5 +1,5 @@
 """
-Modern GUI for Google AI Plus (1-Year Access) Portal
+Modern GUI for Gemini AI Plus Portal
 Supports 1-Click Automated Provisioning and Live UI Diagnostics.
 """
 
@@ -20,7 +20,7 @@ from PIL import Image, ImageTk
 # application's custom icon instead of grouping under python.exe's default Python logo.
 if sys.platform == "win32":
     try:
-        myappid = "nmrisrl11.googleaiplus.claimerportal.v100"
+        myappid = "nmrisrl11.geminiaiplus.portal.v100"
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except Exception:
         pass
@@ -38,6 +38,7 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 from app.config import (
+    APP_NAME,
     ICONS_DIR,
     IMAGES_DIR,
     RESULTS_DIR,
@@ -89,7 +90,7 @@ Account Setup Completed & Qualified — Activation Link Dispatched to Email
 ACTIVATION INSTRUCTIONS:
 1. Check your email inbox (and spam/promotions folder).
 2. Look for the confirmation email: 'Claim your free access'.
-3. Click the activation button inside to activate your 12 months of free Google AI Plus access."""
+3. Click the activation button inside to activate your 12 months of free Gemini AI Plus access."""
     else:
         status_section = f"""--------------------------------------------------------------------------------
 PROMOTIONAL REDEMPTION LINK:
@@ -99,10 +100,10 @@ PROMOTIONAL REDEMPTION LINK:
 ACTIVATION INSTRUCTIONS:
 1. Open the redemption link above in your browser.
 2. Sign in to the corresponding Google Account.
-3. Follow the on-screen steps to activate your 12 months of free Google AI Plus access."""
+3. Follow the on-screen steps to activate your 12 months of free Gemini AI Plus access."""
 
     content = f"""================================================================================
-           GOOGLE AI PLUS (1-YEAR ACCESS) PROVISIONING REPORT
+              GEMINI AI PLUS PORTAL — PROVISIONING REPORT
 ================================================================================
 Generated At    : {date_display}
 Account Name    : {name or 'N/A'}
@@ -126,7 +127,7 @@ confirming or proceeding with any steps on the destination page.
 class GeminiClaimerApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        self.title(f"Google AI Plus Portal — {APP_VERSION}")
+        self.title(f"{APP_NAME} — {APP_VERSION}")
         self.geometry("880x780")
         self.minsize(800, 680)
         self.configure(fg_color=T.BG_WINDOW)
@@ -223,7 +224,7 @@ class GeminiClaimerApp(ctk.CTk):
 
         ctk.CTkLabel(
             brand_cluster,
-            text="Google AI Plus Portal",
+            text=APP_NAME,
             font=T.ui_font(15, "bold"),
             text_color=T.TEXT_PRIMARY,
         ).pack(side="left")
@@ -820,7 +821,7 @@ class GeminiClaimerApp(ctk.CTk):
 
         self.lbl_activate_desc = ctk.CTkLabel(
             self.notice_box,
-            text="Open the offer link in your browser and follow the on-screen steps to activate your 1-Year Google AI Plus access.",
+            text="Open the offer link in your browser and follow the on-screen steps to activate your 1-Year Gemini AI Plus access.",
             font=T.ui_font(11),
             text_color=T.TEXT_SECONDARY,
             justify="left",
@@ -1528,7 +1529,7 @@ class GeminiClaimerApp(ctk.CTk):
             self.btn_copy_link.configure(text="Copy Offer Link")
             self.btn_open_browser.configure(text="Open in Browser")
             self.lbl_activate_desc.configure(
-                text="Open the offer link in your browser and proceed with the activation directly on your screen. Follow the on-screen steps to complete your 1-Year Google AI Plus access."
+                text="Open the offer link in your browser and proceed with the activation directly on your screen. Follow the on-screen steps to complete your 1-Year Gemini AI Plus access."
             )
             self.lbl_notice_desc.configure(
                 text="Please carefully review all on-screen details, requirements, and prompts before confirming or proceeding with any steps on the destination page."
@@ -1560,7 +1561,7 @@ class GeminiClaimerApp(ctk.CTk):
         fname = self.entry_fname.get().strip()
         lname = self.entry_lname.get().strip()
         phone = self.entry_phone.get().strip()
-        full_name = f"{fname} {lname}".strip() or "Google AI Plus User"
+        full_name = f"{fname} {lname}".strip() or "Gemini AI Plus User"
 
         try:
             saved_file = save_result_file(

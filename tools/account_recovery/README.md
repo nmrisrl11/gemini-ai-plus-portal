@@ -15,7 +15,7 @@ By attaching directly to an **already-authenticated session** inside your chosen
 2. Automatically navigates to the profile onboarding page.
 3. Auto-fills and selects all required onboarding fields (Location, Gender, English, Fresher, Experience, Course, College, Stream, Years).
 4. Submits the form and completes career preferences.
-5. Claims the 12-Month Google AI Plus free trial offer link and extracts the canonical `https://one.google.com/offer/<CODE>` URL (or outputs clear email dispatch guidance if delivered via email).
+5. Claims the 12-Month Gemini AI Plus free trial offer link and extracts the canonical `https://one.google.com/offer/<CODE>` URL (or outputs clear email dispatch guidance if delivered via email).
 6. Automatically archives credentials and links to the `results/` directory.
 
 ## How to Use

@@ -1,9 +1,9 @@
-# AGENT CONTEXT & HANDOFF — GOOGLE AI PLUS PORTAL
+# AGENT CONTEXT & HANDOFF — GEMINI AI PLUS PORTAL
 
 > **Document Type:** Developer & Agent Handoff / Architecture Blueprint  
-> **Application:** Google AI Plus — 1-Year Access Portal  
+> **Application:** Gemini AI Plus Portal  
 > **Current Version:** `v1.0.1` (Private Desktop Edition)  
-> **Repository:** `https://github.com/nmrisrl11/gemini-ai-plus-claimer.git`  
+> **Repository:** `https://github.com/nmrisrl11/gemini-ai-plus-portal.git`  
 > **Primary Developer:** `@nmrisrl11`  
 > **Last Updated:** November 2026  
 
@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-**Google AI Plus Portal** is a high-performance Windows desktop automation tool designed to streamline the student promotional onboarding and link acquisition process for **12 months of free Google AI Plus (Gemini Advanced and 2TB Google One cloud storage)**.
+**Gemini AI Plus Portal** is a high-performance Windows desktop automation tool designed to streamline the student promotional onboarding and link acquisition process for **12 months of free Gemini AI Plus (Gemini Advanced and 2TB Google One cloud storage)**.
 
 The software replaces tedious manual navigation, regional demographic formatting, and multi-step verification forms with a 1-click automated background routine. It prompts the user only when their 6-digit email OTP arrives, extracts the official single-use redemption link (`https://one.google.com/offer/...`), and backs up the credentials locally.
 
@@ -23,7 +23,7 @@ The software replaces tedious manual navigation, regional demographic formatting
 - **GUI Framework:** `customtkinter` (Dark Mode, blue theme)
 - **Automation Engine:** `playwright.sync_api` (Intelligent multi-browser cascade: Chrome $\to$ Edge $\to$ Brave/Chromium direct scan $\to$ Playwright cache)
 - **Image Processing:** `pillow` (PIL) for QR rendering, icon manipulation, ray-cast alpha matting, and ICO generation
-- **Packaging (Primary):** `nuitka` v4.3+ (Translates Python directly to native C, compiled via MinGW-w64 GCC into tamper-proof x86-64 machine code, compressed with `zstandard`; produces single-file `dist\Google AI Plus Portal v1.0.1.exe` @ 44.6 MB)
+- **Packaging (Primary):** `nuitka` v4.3+ (Translates Python directly to native C, compiled via MinGW-w64 GCC into tamper-proof x86-64 machine code, compressed with `zstandard`; produces single-file `dist\Gemini AI Plus Portal v1.0.1.exe` @ 44.6 MB)
 - **Packaging (Fallback):** `pyinstaller` (Alternative standard Python bytecode packager)
 - **OS Platform:** Windows 10 & Windows 11 (requires Win32 Shell API for `AppUserModelID` taskbar binding)
 
@@ -32,7 +32,7 @@ The software replaces tedious manual navigation, regional demographic formatting
 ## 3. Architecture & File Layout
 
 ```text
-gemini-ai-plus-claimer/
+gemini-ai-plus-portal/
 ├── main.py                              # Dual GUI/CLI entry point with AppUserModelID registration
 ├── run.bat                              # 1-click Windows development launcher
 ├── requirements.txt                     # Pinned dependencies (including nuitka & zstandard)
@@ -77,7 +77,7 @@ gemini-ai-plus-claimer/
 │       └── run_account_recovery.bat     # 1-click recovery launcher
 ├── results/                             # Output archive for generated credentials & links (.gitignored)
 └── dist/                                # Production output
-    └── Google AI Plus Portal v1.0.1.exe # Hardened native standalone binary (44.6 MB)
+    └── Gemini AI Plus Portal v1.0.1.exe # Hardened native standalone binary (44.6 MB)
 ```
 
 ---
@@ -143,7 +143,7 @@ Upstream servers return raw JSON or unformatted English errors. `normalize_error
 - **Fix in [`main.py`](main.py) and [`app/ui/main_window.py`](app/ui/main_window.py):**
   ```python
   if sys.platform == "win32":
-      ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("nmrisrl11.googleaiplus.claimerportal.v100")
+      ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("nmrisrl11.geminiaiplus.portal.v100")
   ```
 - **Taskbar Sharpness:**
   - `self.iconphoto(True, *self._taskbar_icons)` feeds 256, 64, 48, 32, 24, 16px high-DPI RGBA bitmaps directly to Windows DWM.
@@ -209,7 +209,7 @@ The project provides dual build pipelines to serve both tamper-proof production 
 ### Primary: Hardened Native C Compiler (Nuitka + Zstandard)
 1. Double-click [`scripts/build_nuitka.bat`](scripts/build_nuitka.bat) (or run `python scripts/build_nuitka.py`).
 2. Translates Python directly into C, compiles with MinGW-w64 GCC (`--jobs=4`, `--lto=no`), applies `zstandard` payload compression, and isolates intermediate compilation inside `%LOCALAPPDATA%\NuitkaBuild`.
-3. Output executable: `dist\Google AI Plus Portal v1.0.1.exe` (~44.6 MB).
+3. Output executable: `dist\Gemini AI Plus Portal v1.0.1.exe` (~44.6 MB).
 4. **Security:** Native machine code; zero `.pyc` files; immune to `pyinstxtractor`.
 
 ### Fallback: Standard Portable Packager (PyInstaller)
@@ -217,12 +217,12 @@ The project provides dual build pipelines to serve both tamper-proof production 
 2. Packages bytecode into a standard PyInstaller archive with:
    - `--noconsole`
    - `--onefile`
-   - `--name "Google AI Plus Portal {APP_VERSION}"`
+   - `--name "Gemini AI Plus Portal {APP_VERSION}"`
    - `--icon="assets/images/app_icon.ico"`
    - `--add-data="assets/images;assets/images"`
    - `--collect-all="customtkinter"`
    - `--collect-all="playwright"`
-3. Output executable: `dist\Google AI Plus Portal v1.0.1.exe` (~61.4 MB).
+3. Output executable: `dist\Gemini AI Plus Portal v1.0.1.exe` (~61.4 MB).
 
 ---
 

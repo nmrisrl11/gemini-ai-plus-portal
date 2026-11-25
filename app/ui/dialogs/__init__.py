@@ -1,5 +1,5 @@
 """
-Dialogs and Modals package for Google AI Plus Portal.
+Dialogs and Modals package for Gemini AI Plus Portal.
 """
 
 from app.ui.dialogs.otp_dialog import OTPDialog

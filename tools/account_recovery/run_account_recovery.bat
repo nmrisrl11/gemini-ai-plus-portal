@@ -1,5 +1,5 @@
 @echo off
-title Account Recovery Safety Net - Google AI Plus Completer
+title Account Recovery Safety Net - Gemini AI Plus Portal
 cd /d "%~dp0"
 echo =======================================================
 echo    Account Recovery Safety Net: Profile Completer

@@ -1,5 +1,5 @@
 """
-About Modal dialog for Google AI Plus Portal.
+About Modal dialog for Gemini AI Plus Portal.
 Explains application overview, workflow, limitations, expectations, and privacy.
 """
 
@@ -8,7 +8,7 @@ import webbrowser
 from PIL import Image
 import customtkinter as ctk
 
-from app.config import APP_VERSION, DEVELOPER_GITHUB_URL, IMAGES_DIR
+from app.config import APP_NAME, APP_VERSION, DEVELOPER_GITHUB_URL, IMAGES_DIR
 from app.ui import theme as T
 
 
@@ -16,7 +16,7 @@ class AboutModal(ctk.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
         self.parent = parent
-        self.title("About — Google AI Plus Portal")
+        self.title(f"About — {APP_NAME}")
         self.resizable(False, False)
         self.configure(fg_color=T.BG_WINDOW)
         self.transient(parent)
@@ -47,7 +47,7 @@ class AboutModal(ctk.CTkToplevel):
 
         ctk.CTkLabel(
             title_stack,
-            text="Google AI Plus — 1-Year Access Portal",
+            text=APP_NAME,
             font=T.ui_font(16, "bold"),
             text_color=T.TEXT_PRIMARY,
             anchor="w",
@@ -98,7 +98,7 @@ class AboutModal(ctk.CTkToplevel):
         self._add_section_header(scroll_overview, "Purpose & Automation")
         self._add_paragraph(
             scroll_overview,
-            "An automated desktop utility designed to streamline the student promotional onboarding and link acquisition process for Google AI Plus (12 months of free Gemini Advanced & 2TB cloud storage).",
+            "An automated desktop utility designed to streamline the student promotional onboarding and link acquisition process for Gemini AI Plus (12 months of free Gemini Advanced & 2TB cloud storage).",
         )
 
         self._add_section_header(scroll_overview, "Why Use This Tool?")

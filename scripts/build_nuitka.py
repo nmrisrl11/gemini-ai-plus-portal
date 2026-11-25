@@ -1,11 +1,11 @@
 """
-Cross-platform / Python build script to compile Google AI Plus Portal into an unpackable,
+Cross-platform / Python build script to compile Gemini AI Plus Portal into an unpackable,
 natively compiled standalone .exe using Nuitka.
 
 Produces a true native Windows PE machine-code binary (x86-64) that cannot be unpacked
 by pyinstxtractor or Python decompilers.
 Usage:
-    python build_nuitka.py
+    python scripts/build_nuitka.py
 """
 
 import os
@@ -18,12 +18,12 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from app.config import APP_VERSION
+from app.config import APP_NAME as PORTAL_NAME, APP_VERSION
 
 IMAGES_DIR = os.path.join(PROJECT_ROOT, "assets", "images")
 ICON_ICO = os.path.join(IMAGES_DIR, "app_icon.ico")
 DIST_DIR = os.path.join(PROJECT_ROOT, "dist")
-APP_NAME = f"Google AI Plus Portal {APP_VERSION}"
+APP_NAME = f"{PORTAL_NAME} {APP_VERSION}"
 
 # Use a local non-synced directory for intermediate build files to prevent
 # OneDrive sync lock contention ("Permission denied" on temporary ccache files)
@@ -92,10 +92,10 @@ def build():
         "--playwright-include-browser=none", # Lean binary: attaches to system Chrome/Edge/Brave
         f"--include-data-dir={IMAGES_DIR}=assets/images",
         "--windows-company-name=nmrisrl11",
-        "--windows-product-name=Google AI Plus Portal",
+        f"--windows-product-name={PORTAL_NAME}",
         "--windows-file-version=1.0.1.0",
         "--windows-product-version=1.0.1.0",
-        "--windows-file-description=Google AI Plus (1-Year Access) Portal",
+        f"--windows-file-description={PORTAL_NAME}",
         "--remove-output",
         os.path.join(PROJECT_ROOT, "main.py"),
     ]

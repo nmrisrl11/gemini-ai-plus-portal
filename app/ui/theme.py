@@ -1,5 +1,5 @@
 """
-Centralized Design System & Theme Tokens for Google AI Plus Portal.
+Centralized Design System & Theme Tokens for Gemini AI Plus Portal.
 Provides a cohesive neutral-dark desktop palette, typography scale,
 spacing constants, and Windows 11 DWM titlebar integration.
 """

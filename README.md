@@ -1,8 +1,8 @@
 <div align="center">
 
-# Google AI Plus — 1-Year Access Portal
+# Gemini AI Plus Portal
 
-**Automated 12-Month Gemini Advanced & Google AI Plus Offer Link Generator**
+**Automated 12-Month Gemini Advanced & Gemini AI Plus Offer Link Generator**
 
 [![Version](https://img.shields.io/badge/version-v1.0.1-blue.svg?style=flat-square)](https://github.com/nmrisrl11)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6.svg?style=flat-square)](https://microsoft.com/windows)
@@ -12,7 +12,7 @@
 [![Privacy](https://img.shields.io/badge/privacy-100%25%20Local%20%7C%20Zero%20Telemetry-10b981.svg?style=flat-square)](#privacy--data-guarantees)
 
 <p align="center">
-  A streamlined desktop automation utility engineered to simplify the promotional onboarding and acquisition flow for 12 months of free Google AI Plus (Gemini Advanced and 2TB Google One cloud storage).
+  A streamlined desktop automation utility engineered to simplify the promotional onboarding and acquisition flow for 12 months of free Gemini AI Plus (Gemini Advanced and 2TB Google One cloud storage).
 </p>
 
 </div>
@@ -46,7 +46,7 @@
 
 Manually claiming educational and student promotional subscriptions typically requires navigating multi-step profile forms, formatting regional contact information, passing email verification gateways, and finding redemption endpoints.
 
-**Google AI Plus Portal** automates the entire navigation, data entry, and registration sequence locally in the background. It prompts the user only when their 6-digit email verification code (OTP) arrives, extracts the official Google One redemption link (`https://one.google.com/offer/...`), and saves the session details safely on your local disk.
+**Gemini AI Plus Portal** automates the entire navigation, data entry, and registration sequence locally in the background. It prompts the user only when their 6-digit email verification code (OTP) arrives, extracts the official Google One redemption link (`https://one.google.com/offer/...`), and saves the session details safely on your local disk.
 
 ---
 
@@ -111,7 +111,7 @@ Manually claiming educational and student promotional subscriptions typically re
 No installation or technical setup required. Double-click the pre-compiled binary:
 
 ```cmd
-dist\Google AI Plus Portal v1.0.1.exe
+dist\Gemini AI Plus Portal v1.0.1.exe
 ```
 
 - **No Python Required**: Includes all bundled dependencies.
@@ -177,7 +177,7 @@ Packages Python bytecode into a standard PyInstaller archive (`~61.4 MB`):
 - **Via Batch Script**: Double-click [`scripts/build_portable.bat`](scripts/build_portable.bat)
 - **Via Python**: Run `python scripts/build_portable.py`
 
-The resulting standalone executable will be written to `dist\Google AI Plus Portal v1.0.1.exe`.
+The resulting standalone executable will be written to `dist\Gemini AI Plus Portal v1.0.1.exe`.
 
 ---
 
@@ -220,7 +220,7 @@ flowchart LR
 ## Project Architecture
 
 ```text
-gemini-ai-plus-claimer/
+gemini-ai-plus-portal/
 ├── main.py                              # Dual GUI/CLI entry point with AppUserModelID
 ├── run.bat                              # 1-click Windows source launcher
 ├── requirements.txt                     # Python dependencies
@@ -264,7 +264,7 @@ gemini-ai-plus-claimer/
 │       └── run_account_recovery.bat     # 1-click recovery launcher
 ├── results/                             # Local storage for saved credentials & claim links
 └── dist/                                # Production output
-    └── Google AI Plus Portal v1.0.1.exe # Hardened native standalone binary (44.6 MB)
+    └── Gemini AI Plus Portal v1.0.1.exe # Hardened native standalone binary (44.6 MB)
 ```
 
 ---

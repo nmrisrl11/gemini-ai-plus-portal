@@ -75,7 +75,7 @@ def normalize_error_message(raw_msg: str, for_log: bool = False) -> str:
             return "This Gmail address is already registered. Please enter a new, unregistered Gmail address."
         return (
             "This Gmail address is already registered.\n\n"
-            "• Each Google AI Plus promotional link requires a fresh account registration.\n"
+            "• Each Gemini AI Plus promotional link requires a fresh account registration.\n"
             "• Please enter a different or new Gmail address to proceed."
         )
 
@@ -628,7 +628,7 @@ class GeminiAIClaimer:
     def run(self) -> Optional[str]:
         """Main execution workflow."""
         if not self.email.endswith("@gmail.com"):
-            err = "Invalid Email: A valid @gmail.com account is required for Google AI Plus redemption."
+            err = "Invalid Email: A valid @gmail.com account is required for Gemini AI Plus redemption."
             self.log(err, "ERROR")
             self.on_error(err)
             return None

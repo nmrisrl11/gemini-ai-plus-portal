@@ -1,7 +1,7 @@
 """
-Cross-platform / Python build script to compile Google AI Plus Portal into a portable .exe.
+Cross-platform / Python build script to compile Gemini AI Plus Portal into a portable .exe.
 Usage:
-    python build_portable.py
+    python scripts/build_portable.py
 """
 
 import os
@@ -14,13 +14,13 @@ PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from app.config import APP_VERSION
+from app.config import APP_NAME as PORTAL_NAME, APP_VERSION
 
 IMAGES_DIR = os.path.join(PROJECT_ROOT, "assets", "images")
 ICON_ICO = os.path.join(IMAGES_DIR, "app_icon.ico")
 DIST_DIR = os.path.join(PROJECT_ROOT, "dist")
 BUILD_DIR = os.path.join(PROJECT_ROOT, "build")
-APP_NAME = f"Google AI Plus Portal {APP_VERSION}"
+APP_NAME = f"{PORTAL_NAME} {APP_VERSION}"
 
 
 def build():

@@ -362,7 +362,7 @@ def run_recovery(browser_choice: Optional[str] = None):
             print("  1. Check your email inbox (and spam/promotions folder).")
             print("  2. Look for the confirmation email: 'Claim your free access'")
             print("  3. Click the activation button inside to activate your")
-            print("     12-Month Google AI Plus access.")
+            print("     12-Month Gemini AI Plus access.")
             print("----------------------------------------------------------------\n")
             return True
         elif redemption_url:

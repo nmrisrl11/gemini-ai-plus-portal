@@ -1,5 +1,5 @@
 @echo off
-title Google AI Plus 1-Year Access Hub
+title Gemini AI Plus Portal
 cd /d "%~dp0"
 
 set "VENV_DIR=%~dp0.venv"
@@ -9,7 +9,7 @@ set "PIP_EXE=%VENV_DIR%\Scripts\pip.exe"
 
 if not exist "%PYTHON_EXE%" (
     echo ========================================================
-    echo  Setting up environment for Google AI Plus...
+    echo  Setting up environment for Gemini AI Plus Portal...
     echo ========================================================
     python -m venv "%VENV_DIR%"
     "%PIP_EXE%" install -r "%~dp0requirements.txt"

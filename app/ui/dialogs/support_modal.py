@@ -6,7 +6,7 @@ import os
 from PIL import Image
 import customtkinter as ctk
 
-from app.config import IMAGES_DIR
+from app.config import APP_NAME, IMAGES_DIR
 from app.ui import theme as T
 
 
@@ -149,7 +149,7 @@ class SupportModal(ctk.CTkToplevel):
         # Subtle footer + Close button
         ctk.CTkLabel(
             wrapper,
-            text="Optional  ·  Thanks for using Google AI Plus Portal",
+            text=f"Optional  ·  Thanks for using {APP_NAME}",
             font=T.ui_font(11),
             text_color=T.TEXT_MUTED,
         ).pack(pady=(2, 12))
