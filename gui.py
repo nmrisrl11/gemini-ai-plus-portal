@@ -160,6 +160,7 @@ class GeminiClaimerApp(ctk.CTk):
         """Loads graphical assets from merged images directory."""
         self.icon_app_small = None
         self.icon_shuffle = None
+        self.icon_check = None
 
         png_path = os.path.join(IMAGES_DIR, "app_icon.png")
         if os.path.exists(png_path):
@@ -189,6 +190,14 @@ class GeminiClaimerApp(ctk.CTk):
                 self.icon_shuffle = ctk.CTkImage(light_image=img, dark_image=img, size=(14, 14))
             except Exception:
                 self.icon_shuffle = None
+
+        check_path = os.path.join(IMAGES_DIR, "check.png")
+        if os.path.exists(check_path):
+            try:
+                img = Image.open(check_path)
+                self.icon_check = ctk.CTkImage(light_image=img, dark_image=img, size=(12, 12))
+            except Exception:
+                self.icon_check = None
 
     def _build_ui(self):
         # =====================================================================
@@ -1164,44 +1173,55 @@ class GeminiClaimerApp(ctk.CTk):
         if hasattr(self, "lbl_notice_desc"):
             self.lbl_notice_desc.configure(wraplength=col_width)
 
+    def _set_badge_completed(self, badge: ctk.CTkLabel):
+        """Styles a stepper badge with the crisp white check.png icon."""
+        if self.icon_check:
+            badge.configure(text="", image=self.icon_check, fg_color=T.SUCCESS_BTN)
+        else:
+            badge.configure(text="✓", image=None, fg_color=T.SUCCESS_BTN, text_color="#FFFFFF")
+
+    def _set_badge_number(self, badge: ctk.CTkLabel, number: str, fg_color: str, text_color: str):
+        """Styles a stepper badge with a step number and clears any check icon."""
+        badge.configure(image=None, text=number, fg_color=fg_color, text_color=text_color)
+
     def _set_pipeline_step(self, step: int):
         """Updates the visual 3-step pipeline progress stepper."""
         if not hasattr(self, "step1_lbl"):
             return
 
         if step == 1:
-            self.step1_badge.configure(text="1", fg_color=T.ACCENT_SOFT, text_color=T.ACCENT_TEXT)
+            self._set_badge_number(self.step1_badge, "1", T.ACCENT_SOFT, T.ACCENT_TEXT)
             self.step1_lbl.configure(text="Profile Setup", font=T.ui_font(12, "bold"), text_color=T.TEXT_PRIMARY)
             self.step1_sep.configure(fg_color=T.BORDER_SUBTLE)
 
-            self.step2_badge.configure(text="2", fg_color=T.BG_BADGE, text_color=T.TEXT_MUTED)
+            self._set_badge_number(self.step2_badge, "2", T.BG_BADGE, T.TEXT_MUTED)
             self.step2_lbl.configure(text="Email Verification", font=T.ui_font(12), text_color=T.TEXT_MUTED)
             self.step2_sep.configure(fg_color=T.BORDER_SUBTLE)
 
-            self.step3_badge.configure(text="3", fg_color=T.BG_BADGE, text_color=T.TEXT_MUTED)
+            self._set_badge_number(self.step3_badge, "3", T.BG_BADGE, T.TEXT_MUTED)
             self.step3_lbl.configure(text="Access Link Ready", font=T.ui_font(12), text_color=T.TEXT_MUTED)
         elif step == 2:
-            self.step1_badge.configure(text="✓", fg_color=T.SUCCESS_INNER_BORDER, text_color=T.SUCCESS_TEXT)
+            self._set_badge_completed(self.step1_badge)
             self.step1_lbl.configure(text="Profile Ready", font=T.ui_font(12, "bold"), text_color=T.SUCCESS_TEXT)
             self.step1_sep.configure(fg_color=T.SUCCESS_BORDER)
 
-            self.step2_badge.configure(text="2", fg_color=T.WARNING_BG, text_color=T.WARNING_TEXT)
+            self._set_badge_number(self.step2_badge, "2", T.WARNING_BG, T.WARNING_TEXT)
             self.step2_lbl.configure(text="Awaiting Email OTP", font=T.ui_font(12, "bold"), text_color=T.WARNING_TEXT)
             self.step2_sep.configure(fg_color=T.BORDER_SUBTLE)
 
-            self.step3_badge.configure(text="3", fg_color=T.BG_BADGE, text_color=T.TEXT_MUTED)
+            self._set_badge_number(self.step3_badge, "3", T.BG_BADGE, T.TEXT_MUTED)
             self.step3_lbl.configure(text="Access Link Ready", font=T.ui_font(12), text_color=T.TEXT_MUTED)
             self._set_progress_state("waiting")
         elif step >= 3:
-            self.step1_badge.configure(text="✓", fg_color=T.SUCCESS_INNER_BORDER, text_color=T.SUCCESS_TEXT)
+            self._set_badge_completed(self.step1_badge)
             self.step1_lbl.configure(text="Profile Ready", font=T.ui_font(12, "bold"), text_color=T.SUCCESS_TEXT)
             self.step1_sep.configure(fg_color=T.SUCCESS_BORDER)
 
-            self.step2_badge.configure(text="✓", fg_color=T.SUCCESS_INNER_BORDER, text_color=T.SUCCESS_TEXT)
+            self._set_badge_completed(self.step2_badge)
             self.step2_lbl.configure(text="Email Verified", font=T.ui_font(12, "bold"), text_color=T.SUCCESS_TEXT)
             self.step2_sep.configure(fg_color=T.SUCCESS_BORDER)
 
-            self.step3_badge.configure(text="✓", fg_color=T.SUCCESS_INNER_BORDER, text_color=T.SUCCESS_TEXT)
+            self._set_badge_completed(self.step3_badge)
             self.step3_lbl.configure(text="1-Year Link Ready", font=T.ui_font(12, "bold"), text_color=T.SUCCESS_TEXT)
             self._set_progress_state("done")
 
