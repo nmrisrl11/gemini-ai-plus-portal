@@ -35,15 +35,10 @@ DEVELOPER_GITHUB_URL = "https://github.com/nmrisrl11"
 # In portable standalone .exe mode: automatically set to False (runs headless in background).
 SHOW_VISUAL_BROWSER_OPTION = not IS_PORTABLE
 
-DEFAULT_ACTIVITY_TEXT = """================================================================================
-  GOOGLE AI PLUS — 1-YEAR ACCESS PROVISIONER
-================================================================================
-  Status: System Ready
+DEFAULT_ACTIVITY_TEXT = """Ready to provision a 1-Year Google AI Plus access link.
 
-  Quick Guide:
-  1. Review or customize your account profile above.
-  2. Click "Get 1-Year Access Link" to start provisioning.
-  3. Enter the 6-digit verification code sent to your email when prompted.
-  4. Your 1-Year Google AI Plus redemption link will be ready to claim!
-================================================================================
+  1. Enter your target @gmail.com address above.
+  2. (Optional) Expand Generated Profile to review or customize details.
+  3. Click "Get 1-Year Access Link" to begin automated setup.
+  4. Enter the 6-digit verification code sent to your inbox when prompted.
 """

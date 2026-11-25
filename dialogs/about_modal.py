@@ -9,6 +9,7 @@ from PIL import Image
 import customtkinter as ctk
 
 from constants import APP_VERSION, DEVELOPER_GITHUB_URL, IMAGES_DIR
+import theme as T
 
 
 class AboutModal(ctk.CTkToplevel):
@@ -16,60 +17,68 @@ class AboutModal(ctk.CTkToplevel):
         super().__init__(parent)
         self.parent = parent
         self.title("About — Google AI Plus Portal")
-        self.geometry("580x600")
         self.resizable(False, False)
+        self.configure(fg_color=T.BG_WINDOW)
         self.transient(parent)
         self.grab_set()
 
-        ico_path = os.path.join(IMAGES_DIR, "app_icon.ico")
-        if os.path.exists(ico_path):
-            try:
-                self.after(200, lambda: self.iconbitmap(ico_path))
-            except Exception:
-                pass
+        T.center_modal(self, parent, 590, 580)
+        T.apply_modal_icon(self, IMAGES_DIR)
+        self.after(60, lambda: T.apply_win11_titlebar(self, T.BG_TOPBAR, T.TEXT_PRIMARY))
 
-        # Center relative to parent window
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        self.geometry(f"+{max(0, parent_x + 140)}+{max(0, parent_y + 70)}")
+        # Top Identity Header Bar
+        header = ctk.CTkFrame(self, fg_color=T.BG_TOPBAR, corner_radius=0)
+        header.pack(fill="x")
 
-        # App Icon Emblem
+        header_inner = ctk.CTkFrame(header, fg_color="transparent")
+        header_inner.pack(fill="x", padx=22, pady=16)
+
         icon_path = os.path.join(IMAGES_DIR, "app_icon.png")
         if os.path.exists(icon_path):
             try:
                 raw_logo = Image.open(icon_path)
-                self.logo_img = ctk.CTkImage(light_image=raw_logo, dark_image=raw_logo, size=(54, 54))
-                ctk.CTkLabel(self, text="", image=self.logo_img).pack(pady=(14, 2))
+                self.logo_img = ctk.CTkImage(light_image=raw_logo, dark_image=raw_logo, size=(42, 42))
+                ctk.CTkLabel(header_inner, text="", image=self.logo_img).pack(side="left", padx=(0, 14))
             except Exception:
                 pass
 
-        # Top Header
-        ctk.CTkLabel(
-            self,
-            text="Google AI Plus — 1-Year Access Portal",
-            font=ctk.CTkFont(size=18, weight="bold"),
-            text_color="#38bdf8",
-        ).pack(pady=(4, 2))
+        title_stack = ctk.CTkFrame(header_inner, fg_color="transparent")
+        title_stack.pack(side="left", fill="x", expand=True)
 
-        header_sub = ctk.CTkLabel(
-            self,
-            text=f"{APP_VERSION}  •  Desktop Edition  •  By @nmrisrl11",
-            font=ctk.CTkFont(size=11),
-            text_color="#94a3b8",
-        )
-        header_sub.pack(pady=(0, 10))
+        ctk.CTkLabel(
+            title_stack,
+            text="Google AI Plus — 1-Year Access Portal",
+            font=T.ui_font(16, "bold"),
+            text_color=T.TEXT_PRIMARY,
+            anchor="w",
+        ).pack(anchor="w")
+
+        ctk.CTkLabel(
+            title_stack,
+            text=f"{APP_VERSION}  ·  Desktop Edition  ·  Developed by @nmrisrl11",
+            font=T.ui_font(11),
+            text_color=T.TEXT_MUTED,
+            anchor="w",
+        ).pack(anchor="w", pady=(2, 0))
+
+        ctk.CTkFrame(self, fg_color=T.BORDER_SUBTLE, height=1, corner_radius=0).pack(fill="x")
 
         # Tabview for Organized Information
         self.tabview = ctk.CTkTabview(
             self,
-            width=540,
-            height=410,
-            fg_color="#1e293b",
-            segmented_button_selected_color="#0284c7",
-            segmented_button_selected_hover_color="#0369a1",
-            segmented_button_unselected_color="#0f172a",
+            fg_color=T.BG_CARD,
+            border_width=1,
+            border_color=T.BORDER_SUBTLE,
+            corner_radius=10,
+            segmented_button_fg_color=T.BG_SUBCARD,
+            segmented_button_selected_color=T.ACCENT,
+            segmented_button_selected_hover_color=T.ACCENT_HOVER,
+            segmented_button_unselected_color=T.BG_SUBCARD,
+            segmented_button_unselected_hover_color=T.BG_HOVER,
+            text_color=T.TEXT_PRIMARY,
+            text_color_disabled=T.TEXT_MUTED,
         )
-        self.tabview.pack(padx=20, pady=(0, 10), fill="both", expand=True)
+        self.tabview.pack(padx=20, pady=(14, 14), fill="both", expand=True)
 
         tab_overview = self.tabview.add("What It Does")
         tab_limits = self.tabview.add("Usage & Limits")
@@ -78,8 +87,13 @@ class AboutModal(ctk.CTkToplevel):
         # ------------------------------------------------------------------
         # Tab 1: What It Does
         # ------------------------------------------------------------------
-        scroll_overview = ctk.CTkScrollableFrame(tab_overview, fg_color="transparent")
-        scroll_overview.pack(fill="both", expand=True, padx=8, pady=6)
+        scroll_overview = ctk.CTkScrollableFrame(
+            tab_overview,
+            fg_color="transparent",
+            scrollbar_button_color="#222938",
+            scrollbar_button_hover_color="#333E54",
+        )
+        scroll_overview.pack(fill="both", expand=True, padx=6, pady=4)
 
         self._add_section_header(scroll_overview, "Purpose & Automation")
         self._add_paragraph(
@@ -107,8 +121,13 @@ class AboutModal(ctk.CTkToplevel):
         # ------------------------------------------------------------------
         # Tab 2: Usage & Limits
         # ------------------------------------------------------------------
-        scroll_limits = ctk.CTkScrollableFrame(tab_limits, fg_color="transparent")
-        scroll_limits.pack(fill="both", expand=True, padx=8, pady=6)
+        scroll_limits = ctk.CTkScrollableFrame(
+            tab_limits,
+            fg_color="transparent",
+            scrollbar_button_color="#222938",
+            scrollbar_button_hover_color="#333E54",
+        )
+        scroll_limits.pack(fill="both", expand=True, padx=6, pady=4)
 
         self._add_section_header(scroll_limits, "Google Account Compatibility")
         self._add_paragraph(
@@ -139,8 +158,13 @@ class AboutModal(ctk.CTkToplevel):
         # ------------------------------------------------------------------
         # Tab 3: Privacy & Terms
         # ------------------------------------------------------------------
-        scroll_privacy = ctk.CTkScrollableFrame(tab_privacy, fg_color="transparent")
-        scroll_privacy.pack(fill="both", expand=True, padx=8, pady=6)
+        scroll_privacy = ctk.CTkScrollableFrame(
+            tab_privacy,
+            fg_color="transparent",
+            scrollbar_button_color="#222938",
+            scrollbar_button_hover_color="#333E54",
+        )
+        scroll_privacy.pack(fill="both", expand=True, padx=6, pady=4)
 
         self._add_section_header(scroll_privacy, "100% Local Execution")
         self._add_paragraph(
@@ -166,40 +190,52 @@ class AboutModal(ctk.CTkToplevel):
         # Bottom Action Bar
         # ------------------------------------------------------------------
         bottom_frame = ctk.CTkFrame(self, fg_color="transparent")
-        bottom_frame.pack(fill="x", padx=20, pady=(0, 14))
+        bottom_frame.pack(fill="x", padx=20, pady=(0, 16))
 
         ctk.CTkButton(
             bottom_frame,
             text="GitHub",
-            width=90,
-            height=32,
-            font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color="#334155",
-            hover_color="#475569",
+            width=88,
+            height=34,
+            font=T.ui_font(12, "bold"),
+            fg_color="transparent",
+            hover_color=T.BG_HOVER,
+            border_width=1,
+            border_color=T.BORDER_GHOST,
+            text_color=T.TEXT_SECONDARY,
+            corner_radius=7,
             command=lambda: webbrowser.open(DEVELOPER_GITHUB_URL),
         ).pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(
             bottom_frame,
             text="Support Dev",
-            width=120,
-            height=32,
-            font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color="#334155",
-            hover_color="#f59e0b",
+            width=112,
+            height=34,
+            font=T.ui_font(12, "bold"),
+            fg_color="transparent",
+            hover_color=T.WARNING_BG,
+            border_width=1,
+            border_color=T.BORDER_GHOST,
+            text_color=T.WARNING_TEXT,
+            corner_radius=7,
             command=self._open_support_modal,
         ).pack(side="left")
 
         ctk.CTkButton(
             bottom_frame,
             text="Close",
-            width=100,
-            height=32,
-            font=ctk.CTkFont(size=12, weight="bold"),
-            fg_color="#0284c7",
-            hover_color="#0369a1",
+            width=96,
+            height=34,
+            font=T.ui_font(12, "bold"),
+            fg_color=T.ACCENT,
+            hover_color=T.ACCENT_HOVER,
+            text_color="#FFFFFF",
+            corner_radius=7,
             command=self.destroy,
         ).pack(side="right")
+
+        self.bind("<Escape>", lambda e: self.destroy())
 
     def _open_support_modal(self):
         from dialogs.support_modal import SupportModal
@@ -213,17 +249,17 @@ class AboutModal(ctk.CTkToplevel):
         ctk.CTkLabel(
             parent,
             text=text,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="#38bdf8",
+            font=T.ui_font(13, "bold"),
+            text_color=T.TEXT_PRIMARY,
             anchor="w",
-        ).pack(fill="x", pady=(8, 2))
+        ).pack(fill="x", pady=(10, 3))
 
     def _add_paragraph(self, parent, text: str):
         ctk.CTkLabel(
             parent,
             text=text,
-            font=ctk.CTkFont(size=11),
-            text_color="#cbd5e1",
+            font=T.ui_font(12),
+            text_color=T.TEXT_SECONDARY,
             justify="left",
             anchor="w",
             wraplength=490,

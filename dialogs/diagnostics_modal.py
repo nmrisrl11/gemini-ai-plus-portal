@@ -3,13 +3,13 @@ Edge Case Diagnostics & Simulation modal for development and testing.
 Accessible via F12 or Ctrl+Shift+D.
 """
 
-import os
 from tkinter import messagebox
 import customtkinter as ctk
 
 from claimer import normalize_error_message
 from constants import IMAGES_DIR
 from dialogs.otp_dialog import OTPDialog
+import theme as T
 
 
 class DiagnosticsModal(ctk.CTkToplevel):
@@ -17,85 +17,172 @@ class DiagnosticsModal(ctk.CTkToplevel):
         super().__init__(parent)
         self.parent = parent
         self.title("Edge Case Diagnostics & Simulation")
-        self.geometry("480x420")
         self.resizable(False, False)
+        self.configure(fg_color=T.BG_WINDOW)
         self.transient(parent)
         self.grab_set()
 
-        ico_path = os.path.join(IMAGES_DIR, "app_icon.ico")
-        if os.path.exists(ico_path):
-            try:
-                self.after(200, lambda: self.iconbitmap(ico_path))
-            except Exception:
-                pass
+        T.center_modal(self, parent, 540, 510)
+        T.apply_modal_icon(self, IMAGES_DIR)
+        self.after(60, lambda: T.apply_win11_titlebar(self, T.BG_WINDOW, T.TEXT_PRIMARY))
 
-        # Center relative to parent window
-        parent_x = parent.winfo_x()
-        parent_y = parent.winfo_y()
-        self.geometry(f"+{max(0, parent_x + 180)}+{max(0, parent_y + 120)}")
+        wrapper = ctk.CTkFrame(self, fg_color="transparent")
+        wrapper.pack(fill="both", expand=True, padx=22, pady=20)
 
-        ctk.CTkLabel(
-            self,
-            text="Edge Case Testing Suite",
-            font=ctk.CTkFont(size=18, weight="bold"),
-            text_color="#38bdf8",
-        ).pack(pady=(18, 5))
+        # Header
+        head_row = ctk.CTkFrame(wrapper, fg_color="transparent")
+        head_row.pack(fill="x")
 
         ctk.CTkLabel(
-            self,
-            text="Test every edge case instantly without burning an email:",
-            font=ctk.CTkFont(size=12),
-            text_color="#94a3b8",
-        ).pack(pady=(0, 15))
+            head_row,
+            text="Diagnostics & Simulation",
+            font=T.ui_font(17, "bold"),
+            text_color=T.TEXT_PRIMARY,
+        ).pack(side="left")
 
-        # Test 1: Invalid OTP Modal & Re-prompt
-        ctk.CTkButton(
-            self,
-            text="1. Test Invalid OTP Modal & Recovery Loop",
-            height=36,
-            fg_color="#0284c7",
-            hover_color="#0369a1",
+        dev_pill = ctk.CTkFrame(
+            head_row,
+            fg_color=T.BG_BADGE,
+            border_width=1,
+            border_color=T.BORDER_SUBTLE,
+            corner_radius=5,
+        )
+        dev_pill.pack(side="right", pady=2)
+        ctk.CTkLabel(
+            dev_pill,
+            text="DEV SUITE",
+            font=T.mono_font(10, "bold"),
+            text_color=T.TEXT_MUTED,
+        ).pack(padx=7, pady=1)
+
+        ctk.CTkLabel(
+            wrapper,
+            text="Simulate edge cases and UI state transitions without consuming an email.",
+            font=T.ui_font(12),
+            text_color=T.TEXT_SECONDARY,
+            anchor="w",
+        ).pack(fill="x", pady=(4, 16))
+
+        # Structured Simulation Rows
+        self._add_sim_row(
+            wrapper,
+            tag="OTP",
+            tag_bg=T.ACCENT_SOFT,
+            tag_fg=T.ACCENT_TEXT,
+            title="Invalid OTP Modal & Recovery Loop",
+            desc="Opens OTP prompt with an error alert banner and validates re-entry.",
             command=self._test_invalid_otp,
-        ).pack(fill="x", padx=30, pady=6)
-
-        # Test 2: Server Rejection Catching
-        ctk.CTkButton(
-            self,
-            text="2. Test Already-Registered Rejection Alert",
-            height=36,
-            fg_color="#d97706",
-            hover_color="#b45309",
+        )
+        self._add_sim_row(
+            wrapper,
+            tag="ERR",
+            tag_bg=T.DANGER_BG,
+            tag_fg=T.DANGER_TEXT,
+            title="Already-Registered Rejection Alert",
+            desc="Verifies server rejection normalization and user-facing notice.",
             command=self._test_server_rejection,
-        ).pack(fill="x", padx=30, pady=6)
-
-        # Test 3: Redemption Result Card & Copy Action
-        ctk.CTkButton(
-            self,
-            text="3. Test Redemption Link Banner & Copywriting",
-            height=36,
-            fg_color="#16a34a",
-            hover_color="#15803d",
+        )
+        self._add_sim_row(
+            wrapper,
+            tag="OK",
+            tag_bg=T.SUCCESS_BG,
+            tag_fg=T.SUCCESS_TEXT,
+            title="Redemption Link Banner & Success State",
+            desc="Activates the full result card, locks fields, and updates stepper.",
             command=self._test_success_flow,
-        ).pack(fill="x", padx=30, pady=6)
-
-        # Test 4: CAPTCHA / Security Challenge Edge Case
-        ctk.CTkButton(
-            self,
-            text="4. Test CAPTCHA / Security Challenge Notice",
-            height=36,
-            fg_color="#8b5cf6",
-            hover_color="#7c3aed",
+        )
+        self._add_sim_row(
+            wrapper,
+            tag="WAIT",
+            tag_bg=T.WARNING_BG,
+            tag_fg=T.WARNING_TEXT,
+            title="CAPTCHA / Security Challenge Notice",
+            desc="Triggers WAITING_USER status without repeated form submissions.",
             command=self._test_captcha_challenge,
-        ).pack(fill="x", padx=30, pady=6)
+        )
+
+        # Footer
+        footer = ctk.CTkFrame(wrapper, fg_color="transparent")
+        footer.pack(fill="x", side="bottom", pady=(10, 0))
 
         ctk.CTkButton(
-            self,
-            text="Close Diagnostics",
-            height=32,
-            fg_color="#334155",
-            hover_color="#475569",
+            footer,
+            text="Close",
+            width=100,
+            height=34,
+            font=T.ui_font(12, "bold"),
+            fg_color=T.BTN_SECONDARY,
+            hover_color=T.BTN_SECONDARY_HOVER,
+            border_width=1,
+            border_color=T.BORDER_GHOST,
+            text_color=T.TEXT_PRIMARY,
+            corner_radius=7,
             command=self.destroy,
-        ).pack(pady=(16, 10))
+        ).pack(side="right")
+
+        self.bind("<Escape>", lambda e: self.destroy())
+
+    def _add_sim_row(self, parent, tag: str, tag_bg: str, tag_fg: str, title: str, desc: str, command):
+        card = ctk.CTkFrame(
+            parent,
+            fg_color=T.BG_CARD,
+            border_width=1,
+            border_color=T.BORDER_SUBTLE,
+            corner_radius=9,
+        )
+        card.pack(fill="x", pady=(0, 8))
+
+        inner = ctk.CTkFrame(card, fg_color="transparent")
+        inner.pack(fill="x", padx=12, pady=10)
+        inner.grid_columnconfigure(1, weight=1)
+
+        badge = ctk.CTkLabel(
+            inner,
+            text=tag,
+            width=46,
+            height=24,
+            font=T.mono_font(10, "bold"),
+            fg_color=tag_bg,
+            text_color=tag_fg,
+            corner_radius=5,
+        )
+        badge.grid(row=0, column=0, padx=(0, 12), sticky="w")
+
+        text_col = ctk.CTkFrame(inner, fg_color="transparent")
+        text_col.grid(row=0, column=1, sticky="ew")
+
+        ctk.CTkLabel(
+            text_col,
+            text=title,
+            font=T.ui_font(12, "bold"),
+            text_color=T.TEXT_PRIMARY,
+            anchor="w",
+        ).pack(fill="x")
+
+        ctk.CTkLabel(
+            text_col,
+            text=desc,
+            font=T.ui_font(11),
+            text_color=T.TEXT_MUTED,
+            anchor="w",
+            justify="left",
+            wraplength=330,
+        ).pack(fill="x")
+
+        ctk.CTkButton(
+            inner,
+            text="Run",
+            width=66,
+            height=28,
+            font=T.ui_font(11, "bold"),
+            fg_color=T.BTN_SECONDARY,
+            hover_color=T.BTN_SECONDARY_HOVER,
+            border_width=1,
+            border_color=T.BORDER_GHOST,
+            text_color=T.TEXT_PRIMARY,
+            corner_radius=6,
+            command=command,
+        ).grid(row=0, column=2, padx=(12, 0), sticky="e")
 
     def _test_invalid_otp(self):
         self.destroy()
@@ -128,7 +215,7 @@ class DiagnosticsModal(ctk.CTkToplevel):
         self.parent._append_log("[Diagnostic] Simulating security verification challenge detection...", "INFO")
         challenge_msg = "Verification challenge detected (Google reCAPTCHA Challenge); manual action required."
         self.parent._append_log(challenge_msg, "WAITING_USER")
-        self.parent._set_status("Awaiting Manual Verification...", "#f59e0b")
+        self.parent._set_status("Awaiting Manual Verification...", T.WARNING)
         norm_err = normalize_error_message("captcha verification challenge detected", for_log=False)
         messagebox.showinfo(
             "Manual Verification Required",
@@ -136,4 +223,4 @@ class DiagnosticsModal(ctk.CTkToplevel):
             parent=self.parent,
         )
         self.parent._append_log("Security challenge detection handled safely without repeated submissions.", "SUCCESS")
-        self.parent._set_status("System Ready", "#10b981")
+        self.parent._set_status("System Ready", T.SUCCESS)
