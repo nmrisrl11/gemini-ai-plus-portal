@@ -152,6 +152,8 @@ def build(mode: str = "onefile", jobs: int = 4) -> bool:
         "-m",
         "nuitka",
         "--standalone",
+        "--mingw64",
+        "--low-memory",
         "--assume-yes-for-downloads",
         f"--jobs={jobs}",
         "--lto=no",

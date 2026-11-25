@@ -70,7 +70,7 @@ jobs:
         env:
           NUITKA_BUILD_DIR: C:\NuitkaBuild\gemini-portal
         run: |
-          python scripts/build_nuitka.py --mode "${{ steps.meta.outputs.mode }}" --jobs 4
+          python scripts/build_nuitka.py --mode "${{ steps.meta.outputs.mode }}" --jobs 2
 
       - name: Locate release artifact
         id: artifact
