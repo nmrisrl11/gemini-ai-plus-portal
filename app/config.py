@@ -34,9 +34,9 @@ APP_VERSION = "v1.0.0"
 DEVELOPER_GITHUB_URL = "https://github.com/nmrisrl11"
 GITHUB_REPO = "nmrisrl11/gemini-ai-plus-portal"
 REPO_GITHUB_URL = f"https://github.com/{GITHUB_REPO}"
+UPDATE_MANIFEST_URL = "https://download-ai-plus-portal.nmrisrl.dev/latest/latest.json"
 RELEASES_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
-# Point to your Cloudflare landing page once live; defaults to GitHub Releases.
-DOWNLOAD_PAGE_URL = f"{REPO_GITHUB_URL}/releases/latest"
+DOWNLOAD_PAGE_URL = "https://gemini-ai-plus-portal.vercel.app"
 
 # Visual browser checkbox control:
 # In development/source mode: SHOW_VISUAL_BROWSER_OPTION is True by default.

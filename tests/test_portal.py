@@ -204,6 +204,7 @@ def test_preferred_browser_selection():
 
 
 def test_updater_semver_and_check():
+    from app.config import DOWNLOAD_PAGE_URL
     from app.core.updater import check_for_update, is_newer_version, parse_semver
 
     assert parse_semver("v1.0.0") == (1, 0, 0)
@@ -212,14 +213,26 @@ def test_updater_semver_and_check():
     assert is_newer_version("v1.0.0", "v1.0.0") is False
     assert is_newer_version("v0.9.9", "v1.0.0") is False
 
-    fake_resp = MagicMock()
-    fake_resp.status = 200
-    fake_resp.read.return_value = b'{"tag_name": "v1.1.0", "html_url": "https://github.com/nmrisrl11/gemini-ai-plus-portal/releases/tag/v1.1.0", "draft": false, "prerelease": false}'
-    fake_resp.__enter__.return_value = fake_resp
-    with patch("urllib.request.urlopen", return_value=fake_resp):
+    # 1. Primary Cloudflare R2 latest.json manifest path
+    r2_resp = MagicMock()
+    r2_resp.status = 200
+    r2_resp.read.return_value = b'{"version": "v1.1.0", "download_url": "https://download-ai-plus-portal.nmrisrl.dev/releases/v1.1.0/Gemini-AI-Plus-Portal-v1.1.0.exe"}'
+    r2_resp.__enter__.return_value = r2_resp
+    with patch("urllib.request.urlopen", return_value=r2_resp):
         info = check_for_update(current_version="v1.0.0")
     assert info is not None and info["latest_version"] == "v1.1.0", info
+    assert info["download_url"] == DOWNLOAD_PAGE_URL, info
 
+    # 2. Fallback to GitHub Releases API when R2 manifest fails
+    gh_resp = MagicMock()
+    gh_resp.status = 200
+    gh_resp.read.return_value = b'{"tag_name": "v1.2.0", "html_url": "https://github.com/nmrisrl11/gemini-ai-plus-portal/releases/tag/v1.2.0", "draft": false, "prerelease": false}'
+    gh_resp.__enter__.return_value = gh_resp
+    with patch("urllib.request.urlopen", side_effect=[OSError("r2 down"), gh_resp]):
+        info_fb = check_for_update(current_version="v1.0.0")
+    assert info_fb is not None and info_fb["latest_version"] == "v1.2.0", info_fb
+
+    # 3. Silent failure when both are offline
     with patch("urllib.request.urlopen", side_effect=OSError("offline")):
         assert check_for_update(current_version="v1.0.0") is None
     print("[OK] test_updater_semver_and_check")

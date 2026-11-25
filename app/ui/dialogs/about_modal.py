@@ -189,7 +189,7 @@ class AboutModal(ctk.CTkToplevel):
             scroll_privacy,
             "This application contains no tracking, telemetry, or analytics.\n\n"
             "Your passwords, email addresses, and verification codes are never transmitted to the developer or any external server. All session reports are saved strictly on your local disk in the results/ folder.\n\n"
-            "On startup, the app performs a single read-only version check against the public GitHub Releases API to notify you if a newer build is available (no personal or device data is sent).",
+            "On startup, the app performs a single read-only version check against the public release manifest to notify you if a newer build is available (no personal or device data is sent).",
         )
 
         self._add_section_header(scroll_privacy, "Disclaimer & Affiliation")

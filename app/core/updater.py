@@ -1,6 +1,8 @@
 """
-Lightweight, non-blocking GitHub Releases update checker for Gemini AI Plus Portal.
-Uses only Python's standard library and fails silently when offline or rate-limited.
+Lightweight, non-blocking release update checker for Gemini AI Plus Portal.
+Checks the Cloudflare R2 latest.json manifest first (zero API rate limits) and
+falls back to the public GitHub Releases API if needed.
+Uses only Python's standard library and fails silently when offline.
 """
 
 import json
@@ -8,7 +10,13 @@ import re
 import urllib.request
 from typing import Dict, Optional, Tuple
 
-from app.config import APP_NAME, APP_VERSION, DOWNLOAD_PAGE_URL, RELEASES_API_URL
+from app.config import (
+    APP_NAME,
+    APP_VERSION,
+    DOWNLOAD_PAGE_URL,
+    RELEASES_API_URL,
+    UPDATE_MANIFEST_URL,
+)
 
 
 def parse_semver(version_str: str) -> Tuple[int, ...]:
@@ -29,46 +37,64 @@ def is_newer_version(latest_tag: str, current_tag: str = APP_VERSION) -> bool:
     return parse_semver(latest_tag) > parse_semver(current_tag)
 
 
+def _fetch_json(url: str, current_version: str, timeout: float) -> Optional[dict]:
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/json, application/vnd.github+json",
+            "User-Agent": f"{APP_NAME}/{current_version}",
+        },
+        method="GET",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        if getattr(resp, "status", 200) != 200:
+            return None
+        payload = json.loads(resp.read().decode("utf-8", errors="ignore"))
+    return payload if isinstance(payload, dict) else None
+
+
 def check_for_update(
     current_version: str = APP_VERSION,
+    manifest_url: str = UPDATE_MANIFEST_URL,
     api_url: str = RELEASES_API_URL,
     download_url: str = DOWNLOAD_PAGE_URL,
     timeout: float = 4.0,
 ) -> Optional[Dict[str, str]]:
     """
-    Queries the public GitHub Releases API for the latest published release.
-    Returns a dict with {'latest_version', 'download_url'} if a newer release exists,
-    otherwise returns None. Never raises on network, HTTP, or parsing errors.
+    Checks for a newer published release using Cloudflare R2 latest.json first,
+    falling back to the GitHub Releases API.
+    Returns {'latest_version', 'download_url'} if a newer release exists, else None.
+    Never raises on network, HTTP, or parsing errors.
     """
-    try:
-        req = urllib.request.Request(
-            api_url,
-            headers={
-                "Accept": "application/vnd.github+json",
-                "User-Agent": f"{APP_NAME}/{current_version}",
-            },
-            method="GET",
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            if getattr(resp, "status", 200) != 200:
-                return None
-            payload = json.loads(resp.read().decode("utf-8", errors="ignore"))
+    # 1. Primary: Cloudflare R2 latest.json manifest (no API rate limits)
+    if manifest_url:
+        try:
+            payload = _fetch_json(manifest_url, current_version, timeout)
+            if payload:
+                latest_tag = str(payload.get("version") or payload.get("tag_name") or "").strip()
+                if latest_tag:
+                    if is_newer_version(latest_tag, current_version):
+                        target_url = download_url or str(payload.get("download_url") or "")
+                        return {
+                            "latest_version": latest_tag,
+                            "download_url": target_url,
+                        }
+                    return None
+        except Exception:
+            pass
 
-        if not isinstance(payload, dict):
+    # 2. Fallback: Public GitHub Releases API
+    if api_url:
+        try:
+            payload = _fetch_json(api_url, current_version, timeout)
+            if payload and not (payload.get("draft") or payload.get("prerelease")):
+                latest_tag = str(payload.get("tag_name") or "").strip()
+                if latest_tag and is_newer_version(latest_tag, current_version):
+                    target_url = download_url or str(payload.get("html_url") or "")
+                    return {
+                        "latest_version": latest_tag,
+                        "download_url": target_url,
+                    }
+        except Exception:
             return None
-        if payload.get("draft") or payload.get("prerelease"):
-            return None
-
-        latest_tag = str(payload.get("tag_name") or "").strip()
-        if not latest_tag:
-            return None
-
-        if is_newer_version(latest_tag, current_version):
-            target_url = download_url or str(payload.get("html_url") or "")
-            return {
-                "latest_version": latest_tag,
-                "download_url": target_url,
-            }
-    except Exception:
-        return None
     return None
