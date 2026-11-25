@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/images/app_icon.png" alt="Gemini AI Plus Portal Logo" width="96" />
+<img src="assets/images/app_icon.png" alt="Gemini AI Plus Portal Logo" width="128" />
 
 # Gemini AI Plus Portal
 
