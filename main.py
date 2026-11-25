@@ -65,6 +65,7 @@ def run_cli(args):
         last_name=args.last_name,
         phone_number=args.phone,
         headless=args.headless,
+        preferred_browser=args.browser,
         manual_verification_timeout=args.manual_timeout,
         on_request_otp=on_request_otp,
     )
@@ -123,6 +124,12 @@ def main():
     parser.add_argument("--last-name", type=str, help="Last name (optional in CLI mode)")
     parser.add_argument("--phone", type=str, help="10-digit Indian phone number (optional in CLI mode)")
     parser.add_argument("--headless", action="store_true", help="Run browser in background (headless)")
+    parser.add_argument(
+        "--browser",
+        choices=["auto", "chrome", "edge", "brave"],
+        default="auto",
+        help="Browser engine preference (default: auto)",
+    )
     parser.add_argument(
         "--manual-timeout",
         type=int,

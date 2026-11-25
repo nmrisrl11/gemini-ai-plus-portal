@@ -8,7 +8,7 @@ import webbrowser
 from PIL import Image
 import customtkinter as ctk
 
-from app.config import APP_NAME, APP_VERSION, DEVELOPER_GITHUB_URL, IMAGES_DIR
+from app.config import APP_NAME, APP_VERSION, IMAGES_DIR, REPO_GITHUB_URL
 from app.ui import theme as T
 
 
@@ -188,7 +188,8 @@ class AboutModal(ctk.CTkToplevel):
         self._add_paragraph(
             scroll_privacy,
             "This application contains no tracking, telemetry, or analytics.\n\n"
-            "Your passwords, email addresses, and verification codes are never transmitted to the developer or any external server. All session reports are saved strictly on your local disk in the results/ folder.",
+            "Your passwords, email addresses, and verification codes are never transmitted to the developer or any external server. All session reports are saved strictly on your local disk in the results/ folder.\n\n"
+            "On startup, the app performs a single read-only version check against the public GitHub Releases API to notify you if a newer build is available (no personal or device data is sent).",
         )
 
         self._add_section_header(scroll_privacy, "Disclaimer & Affiliation")
@@ -216,7 +217,7 @@ class AboutModal(ctk.CTkToplevel):
             border_color=T.BORDER_GHOST,
             text_color=T.TEXT_SECONDARY,
             corner_radius=7,
-            command=lambda: webbrowser.open(DEVELOPER_GITHUB_URL),
+            command=lambda: webbrowser.open(REPO_GITHUB_URL),
         ).pack(side="left", padx=(0, 8))
 
         ctk.CTkButton(

@@ -1,10 +1,13 @@
 <div align="center">
 
+<img src="assets/images/app_icon.png" alt="Gemini AI Plus Portal Logo" width="96" />
+
 # Gemini AI Plus Portal
 
 **Automated 12-Month Google AI Plus Offer Link Generator**
 
-[![Version](https://img.shields.io/badge/version-v1.0.1-blue.svg?style=flat-square)](https://github.com/nmrisrl11)
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?style=flat-square)](https://github.com/nmrisrl11/gemini-ai-plus-portal/releases)
+[![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6.svg?style=flat-square)](https://microsoft.com/windows)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?style=flat-square)](https://python.org)
 [![Automation](https://img.shields.io/badge/engine-Playwright-2EAD33.svg?style=flat-square)](https://playwright.dev)
@@ -14,6 +17,10 @@
 <p align="center">
   A streamlined desktop automation utility engineered to simplify the promotional onboarding and acquisition flow for 12 months of Google AI Plus at no cost (400 GB cloud storage, expanded Gemini app limits with Hydrogen model access, Google Flow, Gemini in Gmail, Gemini Notebook, and more).
 </p>
+
+<br />
+
+<img src="assets/images/preview.PNG" alt="Gemini AI Plus Portal Desktop Interface Preview" width="880" />
 
 </div>
 
@@ -128,7 +135,7 @@ Redeeming the extracted offer link activates **12 months of Google AI Plus at no
 No installation or technical setup required. Double-click the pre-compiled binary:
 
 ```cmd
-dist\Gemini AI Plus Portal v1.0.1.exe
+dist\Gemini AI Plus Portal v1.0.0.exe
 ```
 
 - **No Python Required**: Includes all bundled dependencies.
@@ -175,6 +182,7 @@ python main.py --cli --email "youraccount@gmail.com" --password "YourSecurePassw
 - `--last-name "Last"`: Specify a custom profile last name.
 - `--phone "9876543210"`: Specify a custom 10-digit phone number.
 - `--headless`: Run browser automation silently without opening a visual window.
+- `--browser {auto,chrome,edge,brave}`: Choose a preferred Chromium browser engine (default: `auto`).
 
 ---
 
@@ -194,7 +202,7 @@ Packages Python bytecode into a standard PyInstaller archive (`~61.4 MB`):
 - **Via Batch Script**: Double-click [`scripts/build_portable.bat`](scripts/build_portable.bat)
 - **Via Python**: Run `python scripts/build_portable.py`
 
-The resulting standalone executable will be written to `dist\Gemini AI Plus Portal v1.0.1.exe`.
+The resulting standalone executable will be written to `dist\Gemini AI Plus Portal v1.0.0.exe`.
 
 ---
 
@@ -241,6 +249,7 @@ gemini-ai-plus-portal/
 ├── main.py                              # Dual GUI/CLI entry point with AppUserModelID
 ├── run.bat                              # 1-click Windows source launcher
 ├── requirements.txt                     # Python dependencies
+├── LICENSE                              # MIT License
 ├── README.md                            # Documentation
 ├── AGENT.md                             # Architecture blueprint & handoff guide
 ├── app/                                 # Core application package
@@ -248,7 +257,8 @@ gemini-ai-plus-portal/
 │   ├── config.py                        # Version, dynamic environment detection & paths
 │   ├── core/                            # Business logic & automation engine
 │   │   ├── __init__.py
-│   │   └── claimer.py                   # Playwright browser engine & error normalization
+│   │   ├── claimer.py                   # Playwright browser engine & error normalization
+│   │   └── updater.py                   # Non-blocking GitHub Releases update checker
 │   └── ui/                              # CustomTkinter desktop interface layer
 │       ├── __init__.py
 │       ├── theme.py                     # Centralized design tokens, fonts & Win11 titlebar
@@ -265,6 +275,7 @@ gemini-ai-plus-portal/
 │       ├── app_icon.png                 # 512x512 transparent PNG
 │       ├── check.png                    # Stepper completion white check icon
 │       ├── logo_raw.jpg                 # Source reference icon artwork
+│       ├── preview.PNG                  # Desktop interface preview screenshot
 │       ├── qrcode-bmc.png               # Buy Me a Coffee QR
 │       ├── qrcode-gcash.JPG             # GCash QR
 │       └── shuffle.png                  # Randomize button icon
@@ -281,7 +292,7 @@ gemini-ai-plus-portal/
 │       └── run_account_recovery.bat     # 1-click recovery launcher
 ├── results/                             # Local storage for saved credentials & claim links
 └── dist/                                # Production output
-    └── Gemini AI Plus Portal v1.0.1.exe # Hardened native standalone binary (44.6 MB)
+    └── Gemini AI Plus Portal v1.0.0.exe # Hardened native standalone binary (44.6 MB)
 ```
 
 ---
@@ -330,6 +341,6 @@ This project is an independent desktop utility provided for convenience, testing
 
 ## License
 
-Copyright (c) 2026 nmrisrl11. All rights reserved.
+Copyright (c) 2026 nmrisrl11.
 
-This is a private proprietary utility. Unauthorized commercial redistribution, re-packaging, or public mirror hosting without prior written consent is strictly prohibited.
+This project is open source and licensed under the [MIT License](LICENSE).

@@ -25,6 +25,18 @@ ICON_ICO = os.path.join(IMAGES_DIR, "app_icon.ico")
 DIST_DIR = os.path.join(PROJECT_ROOT, "dist")
 APP_NAME = f"{PORTAL_NAME} {APP_VERSION}"
 
+
+def _to_windows_pe_version(version_str: str) -> str:
+    """Converts a semver tag like 'v1.0.0' into 4-part Windows PE version '1.0.0.0'."""
+    raw = version_str.lstrip("vV").strip()
+    parts = [p for p in raw.split(".") if p.isdigit()]
+    while len(parts) < 4:
+        parts.append("0")
+    return ".".join(parts[:4])
+
+
+PE_VERSION = _to_windows_pe_version(APP_VERSION)
+
 # Use a local non-synced directory for intermediate build files to prevent
 # OneDrive sync lock contention ("Permission denied" on temporary ccache files)
 LOCAL_APP_DATA = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
@@ -93,8 +105,8 @@ def build():
         f"--include-data-dir={IMAGES_DIR}=assets/images",
         "--windows-company-name=nmrisrl11",
         f"--windows-product-name={PORTAL_NAME}",
-        "--windows-file-version=1.0.1.0",
-        "--windows-product-version=1.0.1.0",
+        f"--windows-file-version={PE_VERSION}",
+        f"--windows-product-version={PE_VERSION}",
         f"--windows-file-description={PORTAL_NAME}",
         "--remove-output",
         os.path.join(PROJECT_ROOT, "main.py"),

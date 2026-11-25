@@ -43,12 +43,64 @@ def generate_secure_password(length: int = 12) -> str:
     return "".join(random.choice(chars) for _ in range(length))
 
 
-def normalize_error_message(raw_msg: str, for_log: bool = False) -> str:
+MIN_SUPPORTED_CHROMIUM_MAJOR = 120
+DEFAULT_FALLBACK_CHROME_VERSION = "134.0.0.0"
+
+
+class _HeadlessChallengeFallback(Exception):
+    """Internal signal to relaunch in a visible browser window for user verification."""
+
+
+def parse_browser_major_version(browser_version: Optional[str]) -> Optional[int]:
+    """Extracts the major integer version from a Playwright browser.version string."""
+    if not browser_version:
+        return None
+    match = re.search(r"(\d+)", str(browser_version))
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except ValueError:
+        return None
+
+
+def build_desktop_user_agent(browser_version: Optional[str]) -> str:
+    """
+    Builds a clean Windows desktop Chrome User-Agent dynamically matched to the
+    launched Chromium version (never exposing HeadlessChrome).
+    """
+    version_token = DEFAULT_FALLBACK_CHROME_VERSION
+    if browser_version:
+        full_match = re.search(r"(\d+\.\d+\.\d+\.\d+)", str(browser_version))
+        if full_match:
+            version_token = full_match.group(1)
+        else:
+            major = parse_browser_major_version(browser_version)
+            if major:
+                version_token = f"{major}.0.0.0"
+    return (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        f"Chrome/{version_token} Safari/537.36"
+    )
+
+
+def normalize_error_message(
+    raw_msg: str,
+    for_log: bool = False,
+    mode: Optional[str] = None,
+) -> str:
     """Transforms raw upstream server messages into clear, actionable, controlled copywriting."""
     if not raw_msg:
         return "An unexpected error occurred. Please try again."
 
     lower = raw_msg.lower()
+    inferred_mode = mode
+    if not inferred_mode:
+        if "registration" in lower or "register" in lower:
+            inferred_mode = "register"
+        elif "login" in lower:
+            inferred_mode = "login"
 
     # 1. Already registered / existing account error
     if (
@@ -140,20 +192,49 @@ def normalize_error_message(raw_msg: str, for_log: bool = False) -> str:
 
     # 7. Form readiness failure
     if "did not become ready" in lower or "form not ready" in lower:
+        if inferred_mode == "register":
+            if for_log:
+                return "Registration form did not become ready."
+            return (
+                "The registration form did not become ready within the expected time.\n\n"
+                "• Check your internet connection or try switching to a mobile hotspot.\n"
+                "• If you use strict antivirus web shields or a VPN, try pausing them temporarily and retry."
+            )
         if for_log:
             return "Login form did not become ready."
         return (
             "The login form did not become ready within the expected time.\n\n"
-            "Please verify your network connection and ensure the portal is accessible."
+            "• Check your internet connection or try switching to a mobile hotspot.\n"
+            "• If you use strict antivirus web shields or a VPN, try pausing them temporarily and retry."
         )
 
     # 8. Timeout
     if "timed out" in lower or "timeout" in lower:
+        if inferred_mode == "register":
+            if for_log:
+                return "Registration gateway timed out."
+            return (
+                "The registration gateway timed out.\n\n"
+                "The server did not respond in time.\n"
+                "• Check your internet connection or try switching to a mobile hotspot.\n"
+                "• If you use strict antivirus web shields or a VPN, try pausing them temporarily and retry."
+            )
+        if inferred_mode == "login":
+            if for_log:
+                return "Login timed out."
+            return (
+                "The login operation timed out.\n\n"
+                "The server did not respond or navigation did not reach the authenticated state.\n"
+                "• Check your internet connection or try switching to a mobile hotspot.\n"
+                "• If you use strict antivirus web shields or a VPN, try pausing them temporarily and retry."
+            )
         if for_log:
-            return "Login timed out."
+            return "Gateway connection timed out."
         return (
-            "The login operation timed out.\n\n"
-            "The server did not respond or navigation did not reach the authenticated state. Please try again."
+            "The gateway connection timed out.\n\n"
+            "The server did not respond in time.\n"
+            "• Check your internet connection or try switching to a mobile hotspot.\n"
+            "• If you use strict antivirus web shields or a VPN, try pausing them temporarily and retry."
         )
 
     # 9. Chromium browser engine not found
@@ -226,6 +307,7 @@ class GeminiAIClaimer:
         start_year: str = "2026",
         end_year: str = "2031",
         headless: bool = False,
+        preferred_browser: str = "auto",
         allow_manual_verification: bool = True,
         manual_verification_timeout: int = 120,
         on_log: Optional[Callable[[str, str], None]] = None,
@@ -246,6 +328,7 @@ class GeminiAIClaimer:
         self.start_year = start_year
         self.end_year = end_year
         self.headless = headless
+        self.preferred_browser = (preferred_browser or "auto").strip().lower()
         self.allow_manual_verification = allow_manual_verification
         self.manual_verification_timeout = manual_verification_timeout
 
@@ -531,37 +614,178 @@ class GeminiAIClaimer:
 
         return None
 
+    def _goto_with_retry(
+        self,
+        page: Page,
+        url: str,
+        wait_until: str = "domcontentloaded",
+        timeout: int = 50000,
+        max_attempts: int = 2,
+        label: str = "gateway",
+    ):
+        """
+        Navigates to a URL with an extended timeout and automatic retry on transient
+        timeouts or connection drops, while honoring user cancellation.
+        """
+        transient_tokens = (
+            "err_connection_reset",
+            "err_timed_out",
+            "err_network_changed",
+            "err_connection_closed",
+            "err_name_not_resolved",
+            "err_internet_disconnected",
+            "err_aborted",
+        )
+        last_exc = None
+        for attempt in range(1, max_attempts + 1):
+            if self._is_stopped:
+                return None
+            try:
+                return page.goto(url, wait_until=wait_until, timeout=timeout)
+            except PlaywrightTimeoutError as exc:
+                last_exc = exc
+                if self._is_stopped or attempt >= max_attempts:
+                    raise
+                delay = random.uniform(1.8, 3.0)
+                self.log(
+                    f"{label.capitalize()} timed out (attempt {attempt}/{max_attempts}). Retrying in {delay:.1f}s...",
+                    "WARNING",
+                )
+            except Exception as exc:
+                last_exc = exc
+                if self._is_stopped or attempt >= max_attempts:
+                    raise
+                err_lower = str(exc).lower()
+                if not any(tok in err_lower for tok in transient_tokens):
+                    raise
+                delay = random.uniform(1.8, 3.0)
+                self.log(
+                    f"Transient network issue reaching {label} (attempt {attempt}/{max_attempts}). Retrying in {delay:.1f}s...",
+                    "WARNING",
+                )
+
+            # Interruptible backoff sleep
+            slept = 0.0
+            while slept < delay:
+                if self._is_stopped:
+                    return None
+                step = min(0.2, delay - slept)
+                time.sleep(step)
+                slept += step
+
+        if last_exc:
+            raise last_exc
+        return None
+
     def _launch_browser(self, p):
         """
         Intelligently discovers and launches any available Chromium browser on the user's system.
-        Tries in order:
-        1. Google Chrome channel ('chrome')
+        If preferred_browser is set to 'chrome', 'edge', or 'brave', attempts that browser first
+        before falling back to the 5-tier auto-discovery cascade:
+        1. Google Chrome channel ('chrome') — falls back to Edge if outdated (< v120)
         2. Microsoft Edge channel ('msedge' - pre-installed on 100% of Windows 10/11 machines)
         3. Direct executable scan for Brave, Chrome, and Edge on standard Windows paths
         4. Any host Playwright browser cache in %LOCALAPPDATA%\\ms-playwright
         5. Bundled Playwright Chromium fallback (for development mode)
         """
+        import glob
+        local_app_data = os.environ.get("LOCALAPPDATA", "")
+        prog_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+        prog_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+
+        # 0. Honor explicit user browser selection first (with safe fallback to auto-detect)
+        pref = getattr(self, "preferred_browser", "auto") or "auto"
+        if pref in ("chrome", "edge", "brave"):
+            if pref == "chrome":
+                try:
+                    browser = p.chromium.launch(channel="chrome", headless=self.headless)
+                    ver = parse_browser_major_version(getattr(browser, "version", None))
+                    ver_label = f" (v{ver})" if ver else ""
+                    self.log(f"Browser session initialized using Google Chrome{ver_label} (selected).", "INFO")
+                    return browser
+                except Exception:
+                    for exe_path in (
+                        os.path.join(prog_files, "Google", "Chrome", "Application", "chrome.exe"),
+                        os.path.join(prog_files_x86, "Google", "Chrome", "Application", "chrome.exe"),
+                        os.path.join(local_app_data, "Google", "Chrome", "Application", "chrome.exe"),
+                    ):
+                        if exe_path and os.path.exists(exe_path):
+                            try:
+                                browser = p.chromium.launch(executable_path=exe_path, headless=self.headless)
+                                self.log("Browser session initialized using Google Chrome (selected).", "INFO")
+                                return browser
+                            except Exception:
+                                pass
+            elif pref == "edge":
+                try:
+                    browser = p.chromium.launch(channel="msedge", headless=self.headless)
+                    ver = parse_browser_major_version(getattr(browser, "version", None))
+                    ver_label = f" (v{ver})" if ver else ""
+                    self.log(f"Browser session initialized using Microsoft Edge{ver_label} (selected).", "INFO")
+                    return browser
+                except Exception:
+                    for exe_path in (
+                        os.path.join(prog_files_x86, "Microsoft", "Edge", "Application", "msedge.exe"),
+                        os.path.join(prog_files, "Microsoft", "Edge", "Application", "msedge.exe"),
+                        os.path.join(local_app_data, "Microsoft", "Edge", "Application", "msedge.exe"),
+                    ):
+                        if exe_path and os.path.exists(exe_path):
+                            try:
+                                browser = p.chromium.launch(executable_path=exe_path, headless=self.headless)
+                                self.log("Browser session initialized using Microsoft Edge (selected).", "INFO")
+                                return browser
+                            except Exception:
+                                pass
+            elif pref == "brave":
+                for exe_path in (
+                    os.path.join(prog_files, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+                    os.path.join(prog_files_x86, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+                    os.path.join(local_app_data, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+                ):
+                    if exe_path and os.path.exists(exe_path):
+                        try:
+                            browser = p.chromium.launch(executable_path=exe_path, headless=self.headless)
+                            self.log("Browser session initialized using Brave Browser (selected).", "INFO")
+                            return browser
+                        except Exception:
+                            pass
+
+            self.log(
+                f"Selected browser '{pref}' was not found or could not be launched. Falling back to automatic browser discovery...",
+                "WARNING",
+            )
+
         # 1. Try Google Chrome channel
         try:
             browser = p.chromium.launch(channel="chrome", headless=self.headless)
-            self.log("Browser session initialized using Google Chrome.", "INFO")
-            return browser
+            chrome_major = parse_browser_major_version(getattr(browser, "version", None))
+            if chrome_major is not None and chrome_major < MIN_SUPPORTED_CHROMIUM_MAJOR:
+                self.log(
+                    f"Detected outdated Google Chrome (v{chrome_major} < v{MIN_SUPPORTED_CHROMIUM_MAJOR}). Falling back to Microsoft Edge...",
+                    "WARNING",
+                )
+                try:
+                    browser.close()
+                except Exception:
+                    pass
+            else:
+                ver_label = f" (v{chrome_major})" if chrome_major else ""
+                self.log(f"Browser session initialized using Google Chrome{ver_label}.", "INFO")
+                return browser
         except Exception:
             pass
 
         # 2. Try Microsoft Edge channel (Built-in on Windows 10/11)
         try:
             browser = p.chromium.launch(channel="msedge", headless=self.headless)
-            self.log("Google Chrome channel not found. Initialized using Microsoft Edge.", "INFO")
+            edge_major = parse_browser_major_version(getattr(browser, "version", None))
+            ver_label = f" (v{edge_major})" if edge_major else ""
+            self.log(f"Initialized browser session using Microsoft Edge{ver_label}.", "INFO")
             return browser
         except Exception:
             pass
 
         # 3. Direct executable scan for installed Chromium browsers
-        import glob
-        local_app_data = os.environ.get("LOCALAPPDATA", "")
-        prog_files = os.environ.get("ProgramFiles", r"C:\Program Files")
-        prog_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
 
         direct_candidates = [
             # Brave Browser
@@ -642,137 +866,153 @@ class GeminiAIClaimer:
         self._last_network_error = None
         self._last_http_status = None
         self._last_http_error = None
+        self._headed_fallback_used = False
+        original_headless = self.headless
 
         self.log("Initializing secure browser session with clean isolated context...", "INFO")
 
-        with sync_playwright() as p:
-            browser = None
-            context = None
-            page = None
-            try:
-                browser = self._launch_browser(p)
+        try:
+            with sync_playwright() as p:
+                for _session_pass in range(2):
+                    browser = None
+                    context = None
+                    page = None
+                    try:
+                        browser = self._launch_browser(p)
+                        dynamic_ua = build_desktop_user_agent(getattr(browser, "version", None))
 
-                context = browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36",
-                    viewport={"width": 1280, "height": 850},
-                )
+                        context = browser.new_context(
+                            user_agent=dynamic_ua,
+                            viewport={"width": 1280, "height": 850},
+                        )
 
-                page = context.new_page()
-                self._browser = browser
-                self._context = context
-                self._page = page
+                        page = context.new_page()
+                        self._browser = browser
+                        self._context = context
+                        self._page = page
 
-                # Listen to responses to monitor HTTP 403/429 and capture API errors
-                def on_response(response):
-                    # 1. Track HTTP 403 / 429 status codes
-                    if response.status in (403, 429):
-                        req_type = response.request.resource_type
-                        if "internshala.com" in response.url and req_type in ("document", "xhr", "fetch"):
-                            self._last_http_status = response.status
-                            self._last_http_error = f"HTTP {response.status}"
+                        # Listen to responses to monitor HTTP 403/429 and capture API errors
+                        def on_response(response):
+                            # 1. Track HTTP 403 / 429 status codes
+                            if response.status in (403, 429):
+                                req_type = response.request.resource_type
+                                if "internshala.com" in response.url and req_type in ("document", "xhr", "fetch"):
+                                    self._last_http_status = response.status
+                                    self._last_http_error = f"HTTP {response.status}"
 
-                    # 2. Track JSON endpoint rejections
-                    if any(endpoint in response.url for endpoint in ["student_submit", "verify_email", "login_submit", "verify_ajax"]):
-                        try:
-                            data = response.json()
-                            if isinstance(data, dict) and data.get("success") is False:
-                                raw_err = (
-                                    data.get("errorthrown")
-                                    or data.get("errorThrown")
-                                    or data.get("errorMsg")
-                                    or data.get("message")
-                                    or data.get("error")
-                                )
-                                if raw_err:
-                                    clean = re.sub(r'<[^>]+>', ' ', str(raw_err)).strip()
-                                    clean = re.sub(r'\s+', ' ', clean)
-                                    if clean:
-                                        self._last_network_error = clean
-                                else:
-                                    # Server explicitly rejected request with success: False
-                                    if "verify_ajax" in response.url or "login_submit" in response.url:
-                                        self._last_network_error = "Invalid credentials or login rejected by server."
-                                    else:
-                                        self._last_network_error = "Request rejected by server."
-                        except Exception:
-                            pass
+                            # 2. Track JSON endpoint rejections
+                            if any(endpoint in response.url for endpoint in ["student_submit", "verify_email", "login_submit", "verify_ajax"]):
+                                try:
+                                    data = response.json()
+                                    if isinstance(data, dict) and data.get("success") is False:
+                                        raw_err = (
+                                            data.get("errorthrown")
+                                            or data.get("errorThrown")
+                                            or data.get("errorMsg")
+                                            or data.get("message")
+                                            or data.get("error")
+                                        )
+                                        if raw_err:
+                                            clean = re.sub(r'<[^>]+>', ' ', str(raw_err)).strip()
+                                            clean = re.sub(r'\s+', ' ', clean)
+                                            if clean:
+                                                self._last_network_error = clean
+                                        else:
+                                            # Server explicitly rejected request with success: False
+                                            if "verify_ajax" in response.url or "login_submit" in response.url:
+                                                self._last_network_error = "Invalid credentials or login rejected by server."
+                                            else:
+                                                self._last_network_error = "Request rejected by server."
+                                except Exception:
+                                    pass
 
-                page.on("response", on_response)
+                        page.on("response", on_response)
 
-                if self.mode == "login":
-                    # Direct Login Mode (For testing with already registered account)
-                    if not self._step_login(page):
-                        return None
+                        if self.mode == "login":
+                            # Direct Login Mode (For testing with already registered account)
+                            if not self._step_login(page):
+                                return None
 
-                    # Self-healing check: if this existing account never completed profile onboarding
-                    page.wait_for_timeout(1000)
-                    if "onboarding" in page.url or "personal_details" in page.url or page.locator(":has-text(\"Let's get started\")").first.is_visible():
-                        self.log("Existing account has an incomplete profile. Auto-completing profile onboarding...", "INFO")
-                        if not self._step_profile_details(page):
+                            # Self-healing check: if this existing account never completed profile onboarding
+                            page.wait_for_timeout(1000)
+                            if "onboarding" in page.url or "personal_details" in page.url or page.locator(":has-text(\"Let's get started\")").first.is_visible():
+                                self.log("Existing account has an incomplete profile. Auto-completing profile onboarding...", "INFO")
+                                if not self._step_profile_details(page):
+                                    return None
+                                if not self._step_preferences(page):
+                                    return None
+                            elif "preferences" in page.url or page.locator("h1, h2, div, span").filter(has_text=re.compile(r"Your preferences", re.I)).first.is_visible():
+                                self.log("Existing account is on preferences page. Auto-completing preferences...", "INFO")
+                                if not self._step_preferences(page):
+                                    return None
+                        else:
+                            # New Registration Mode
+                            if not self._step_registration(page):
+                                return None
+
+                            if not self._step_otp_verification(page):
+                                return None
+
+                            if not self._step_profile_details(page):
+                                return None
+
+                            if not self._step_preferences(page):
+                                return None
+
+                        # Step: Claim Offer & Extract Google One Redemption Link
+                        redemption_url = self._step_claim_gemini(page, context)
+                        if redemption_url == "EMAIL_DISPATCHED":
+                            self.log("Account setup completed successfully! The 12-month activation link was dispatched to your email address.", "SUCCESS")
+                            self.on_success("EMAIL_DISPATCHED")
+                            return "EMAIL_DISPATCHED"
+                        elif redemption_url:
+                            self.log("Successfully acquired Google One 1-Year Gemini Plus Redemption Link!", "SUCCESS")
+                            self.on_success(redemption_url)
+                            return redemption_url
+                        else:
+                            self.log("Failed to retrieve final redemption link.", "ERROR")
+                            self.on_error("Could not capture Google One redemption link.")
                             return None
-                        if not self._step_preferences(page):
+
+                    except _HeadlessChallengeFallback:
+                        self._headed_fallback_used = True
+                        self.headless = False
+                        self.log(
+                            "Switching to a visible browser window so you can complete the security verification...",
+                            "WAITING_USER",
+                        )
+                        continue
+                    except Exception as e:
+                        if self._is_stopped:
+                            self.log("Session stopped.", "INFO")
                             return None
-                    elif "preferences" in page.url or page.locator("h1, h2, div, span").filter(has_text=re.compile(r"Your preferences", re.I)).first.is_visible():
-                        self.log("Existing account is on preferences page. Auto-completing preferences...", "INFO")
-                        if not self._step_preferences(page):
-                            return None
-                else:
-                    # New Registration Mode
-                    if not self._step_registration(page):
+                        raw_e = str(e)
+                        if "No compatible Chromium browser" in raw_e or "executable doesn't exist" in raw_e.lower():
+                            err_msg = raw_e
+                        else:
+                            err_msg = f"Unexpected error occurred: {raw_e}"
+                        self.log(err_msg, "ERROR")
+                        self.on_error(err_msg)
                         return None
-
-                    if not self._step_otp_verification(page):
-                        return None
-
-                    if not self._step_profile_details(page):
-                        return None
-
-                    if not self._step_preferences(page):
-                        return None
-
-                # Step: Claim Offer & Extract Google One Redemption Link
-                redemption_url = self._step_claim_gemini(page, context)
-                if redemption_url == "EMAIL_DISPATCHED":
-                    self.log("Account setup completed successfully! The 12-month activation link was dispatched to your email address.", "SUCCESS")
-                    self.on_success("EMAIL_DISPATCHED")
-                    return "EMAIL_DISPATCHED"
-                elif redemption_url:
-                    self.log("Successfully acquired Google One 1-Year Gemini Plus Redemption Link!", "SUCCESS")
-                    self.on_success(redemption_url)
-                    return redemption_url
-                else:
-                    self.log("Failed to retrieve final redemption link.", "ERROR")
-                    self.on_error("Could not capture Google One redemption link.")
-                    return None
-
-            except Exception as e:
-                if self._is_stopped:
-                    self.log("Session stopped.", "INFO")
-                    return None
-                raw_e = str(e)
-                if "No compatible Chromium browser" in raw_e or "executable doesn't exist" in raw_e.lower():
-                    err_msg = raw_e
-                else:
-                    err_msg = f"Unexpected error occurred: {raw_e}"
-                self.log(err_msg, "ERROR")
-                self.on_error(err_msg)
+                    finally:
+                        if page:
+                            try:
+                                page.close()
+                            except Exception:
+                                pass
+                        if context:
+                            try:
+                                context.close()
+                            except Exception:
+                                pass
+                        if browser:
+                            try:
+                                browser.close()
+                            except Exception:
+                                pass
                 return None
-            finally:
-                if page:
-                    try:
-                        page.close()
-                    except Exception:
-                        pass
-                if context:
-                    try:
-                        context.close()
-                    except Exception:
-                        pass
-                if browser:
-                    try:
-                        browser.close()
-                    except Exception:
-                        pass
+        finally:
+            self.headless = original_headless
 
     def _step_login(self, page: Page) -> bool:
         """
@@ -792,12 +1032,21 @@ class GeminiAIClaimer:
 
         # 1. Navigate to login portal
         try:
-            resp = page.goto(PARTNER_LOGIN_URL, wait_until="domcontentloaded", timeout=30000)
+            resp = self._goto_with_retry(
+                page,
+                PARTNER_LOGIN_URL,
+                wait_until="domcontentloaded",
+                timeout=50000,
+                max_attempts=2,
+                label="login portal",
+            )
+            if self._is_stopped:
+                return False
             if resp and resp.status in (403, 429):
                 self._last_http_status = resp.status
         except PlaywrightTimeoutError:
             self.log("Login timed out: Navigation to login portal timed out.", "ERROR")
-            self.on_error("Login portal failed to respond in time (connection timed out).")
+            self.on_error(normalize_error_message("Login portal failed to respond in time (connection timed out).", for_log=False, mode="login"))
             return False
         except Exception as e:
             if self._is_stopped:
@@ -809,11 +1058,11 @@ class GeminiAIClaimer:
         # 2. Check for immediate HTTP status barriers (403 Forbidden / 429 Rate Limit)
         if self._last_http_status == 403:
             self.log("Login failed: HTTP 403 Forbidden received. Access blocked by security policy.", "ERROR")
-            self.on_error(normalize_error_message("403 Forbidden", for_log=False))
+            self.on_error(normalize_error_message("403 Forbidden", for_log=False, mode="login"))
             return False
         if self._last_http_status == 429:
             self.log("Login failed: HTTP 429 Too Many Requests received. Rate limit exceeded.", "ERROR")
-            self.on_error(normalize_error_message("429 Too Many Requests", for_log=False))
+            self.on_error(normalize_error_message("429 Too Many Requests", for_log=False, mode="login"))
             return False
 
         # 3. Check if verification challenge / interstitial is active prior to form interaction
@@ -825,6 +1074,9 @@ class GeminiAIClaimer:
                 if self._is_authenticated(page):
                     self.log("Login successful.", "SUCCESS")
                     return True
+            elif self.headless and self.allow_manual_verification and not getattr(self, "_headed_fallback_used", False):
+                self.log(f"Verification challenge detected in background mode ({pre_challenge}).", "WARNING")
+                raise _HeadlessChallengeFallback(pre_challenge)
             else:
                 self.log("Verification challenge detected; manual action required.", "ERROR")
                 if self.headless:
@@ -1028,12 +1280,21 @@ class GeminiAIClaimer:
 
         # 1. Navigate to partner registration page
         try:
-            resp = page.goto(PARTNER_REGISTRATION_URL, wait_until="domcontentloaded", timeout=30000)
+            resp = self._goto_with_retry(
+                page,
+                PARTNER_REGISTRATION_URL,
+                wait_until="domcontentloaded",
+                timeout=50000,
+                max_attempts=2,
+                label="registration gateway",
+            )
+            if self._is_stopped:
+                return False
             if resp and resp.status in (403, 429):
                 self._last_http_status = resp.status
         except PlaywrightTimeoutError:
             self.log("Registration timed out: Navigation to registration gateway timed out.", "ERROR")
-            self.on_error("Registration gateway failed to respond in time (connection timed out).")
+            self.on_error(normalize_error_message("Registration gateway failed to respond in time (connection timed out).", for_log=False, mode="register"))
             return False
         except Exception as e:
             if self._is_stopped:
@@ -1045,11 +1306,11 @@ class GeminiAIClaimer:
         # 2. Check HTTP status barriers
         if self._last_http_status == 403:
             self.log("Registration failed: HTTP 403 Forbidden received.", "ERROR")
-            self.on_error(normalize_error_message("403 Forbidden", for_log=False))
+            self.on_error(normalize_error_message("403 Forbidden", for_log=False, mode="register"))
             return False
         if self._last_http_status == 429:
             self.log("Registration failed: HTTP 429 Too Many Requests received.", "ERROR")
-            self.on_error(normalize_error_message("429 Too Many Requests", for_log=False))
+            self.on_error(normalize_error_message("429 Too Many Requests", for_log=False, mode="register"))
             return False
 
         # 3. Check if verification challenge / interstitial is active prior to form interaction
@@ -1058,6 +1319,9 @@ class GeminiAIClaimer:
             if not self.headless and self.allow_manual_verification:
                 if not self._wait_for_manual_verification(page, pre_challenge):
                     return False
+            elif self.headless and self.allow_manual_verification and not getattr(self, "_headed_fallback_used", False):
+                self.log(f"Verification challenge detected in background mode ({pre_challenge}).", "WARNING")
+                raise _HeadlessChallengeFallback(pre_challenge)
             else:
                 self.log("Verification challenge detected; manual action required.", "ERROR")
                 self.on_error("Security verification challenge detected by the portal.")
@@ -1747,7 +2011,14 @@ class GeminiAIClaimer:
         if not is_on_pref:
             self.log("Navigating to career preferences portal...", "INFO")
             try:
-                page.goto("https://internshala.com/user_preference/preferences", wait_until="domcontentloaded", timeout=25000)
+                self._goto_with_retry(
+                    page,
+                    "https://internshala.com/user_preference/preferences",
+                    wait_until="domcontentloaded",
+                    timeout=45000,
+                    max_attempts=2,
+                    label="preferences page",
+                )
                 page.wait_for_timeout(2000)
             except Exception as e:
                 self.log(f"Preferences navigation notice: {e}", "WARNING")
@@ -2005,7 +2276,14 @@ class GeminiAIClaimer:
         promo_url = "https://internshala.com/google-gemini-ai-plus"
         self.log("Accessing promotional portal...", "INFO")
         try:
-            page.goto(promo_url, wait_until="domcontentloaded", timeout=30000)
+            self._goto_with_retry(
+                page,
+                promo_url,
+                wait_until="domcontentloaded",
+                timeout=50000,
+                max_attempts=2,
+                label="promotional portal",
+            )
             page.wait_for_timeout(2500)
         except Exception as e:
             self.log(f"Navigation to promotional portal encountered: {e}", "WARNING")
@@ -2040,7 +2318,14 @@ class GeminiAIClaimer:
                 if not self._step_preferences(page):
                     return None
                 # Re-navigate to promo portal
-                page.goto(promo_url, wait_until="domcontentloaded", timeout=30000)
+                self._goto_with_retry(
+                    page,
+                    promo_url,
+                    wait_until="domcontentloaded",
+                    timeout=50000,
+                    max_attempts=2,
+                    label="promotional portal",
+                )
                 page.wait_for_timeout(2500)
         except Exception:
             pass

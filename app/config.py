@@ -30,8 +30,13 @@ IMAGES_DIR = os.path.join(ASSETS_DIR, "images")
 ICONS_DIR = IMAGES_DIR  # Alias pointing to merged images directory
 
 APP_NAME = "Gemini AI Plus Portal"
-APP_VERSION = "v1.0.1"
+APP_VERSION = "v1.0.0"
 DEVELOPER_GITHUB_URL = "https://github.com/nmrisrl11"
+GITHUB_REPO = "nmrisrl11/gemini-ai-plus-portal"
+REPO_GITHUB_URL = f"https://github.com/{GITHUB_REPO}"
+RELEASES_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+# Point to your Cloudflare landing page once live; defaults to GitHub Releases.
+DOWNLOAD_PAGE_URL = f"{REPO_GITHUB_URL}/releases/latest"
 
 # Visual browser checkbox control:
 # In development/source mode: SHOW_VISUAL_BROWSER_OPTION is True by default.

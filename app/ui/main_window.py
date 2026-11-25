@@ -44,6 +44,7 @@ from app.config import (
     RESULTS_DIR,
     APP_VERSION,
     DEVELOPER_GITHUB_URL,
+    REPO_GITHUB_URL,
     SHOW_VISUAL_BROWSER_OPTION,
     DEFAULT_ACTIVITY_TEXT,
 )
@@ -147,6 +148,7 @@ class GeminiClaimerApp(ctk.CTk):
         self._load_icons()
         self._build_ui()
         self._start_queue_listener()
+        self.after(1500, self._start_update_check)
 
         # Match Windows 11 native titlebar to app chrome
         self.after(60, lambda: T.apply_win11_titlebar(self, T.BG_TOPBAR, T.TEXT_PRIMARY))
@@ -312,6 +314,20 @@ class GeminiClaimerApp(ctk.CTk):
 
         ctk.CTkLabel(footer_frame, text="  ·  ", font=T.ui_font(11), text_color=T.TEXT_FAINT).pack(side="left")
 
+        repo_link = ctk.CTkLabel(
+            footer_frame,
+            text="GitHub",
+            font=T.ui_font(11),
+            text_color=T.TEXT_MUTED,
+            cursor="hand2",
+        )
+        repo_link.pack(side="left")
+        repo_link.bind("<Enter>", lambda e: repo_link.configure(text_color=T.ACCENT_TEXT))
+        repo_link.bind("<Leave>", lambda e: repo_link.configure(text_color=T.TEXT_MUTED))
+        repo_link.bind("<Button-1>", lambda e: webbrowser.open(REPO_GITHUB_URL))
+
+        ctk.CTkLabel(footer_frame, text="  ·  ", font=T.ui_font(11), text_color=T.TEXT_FAINT).pack(side="left")
+
         about_link = ctk.CTkLabel(
             footer_frame,
             text="About",
@@ -350,6 +366,53 @@ class GeminiClaimerApp(ctk.CTk):
         # =====================================================================
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
         self.main_container.pack(fill="both", expand=True, padx=24, pady=(14, 8))
+
+        # Hidden Update Banner (shown above Setup Card if a newer release exists)
+        self._update_download_url = None
+        self.update_banner = ctk.CTkFrame(
+            self.main_container,
+            fg_color=T.BG_CARD,
+            border_width=1,
+            border_color=T.ACCENT,
+            corner_radius=10,
+        )
+        upd_inner = ctk.CTkFrame(self.update_banner, fg_color="transparent")
+        upd_inner.pack(fill="x", padx=14, pady=9)
+
+        self.lbl_update_msg = ctk.CTkLabel(
+            upd_inner,
+            text="",
+            font=T.ui_font(12, "bold"),
+            text_color=T.TEXT_PRIMARY,
+            anchor="w",
+        )
+        self.lbl_update_msg.pack(side="left", fill="x", expand=True)
+
+        ctk.CTkButton(
+            upd_inner,
+            text="Dismiss",
+            width=68,
+            height=26,
+            font=T.ui_font(11),
+            fg_color="transparent",
+            hover_color=T.BG_HOVER,
+            text_color=T.TEXT_MUTED,
+            corner_radius=6,
+            command=self.update_banner.pack_forget,
+        ).pack(side="right", padx=(6, 0))
+
+        ctk.CTkButton(
+            upd_inner,
+            text="Download Update",
+            width=126,
+            height=26,
+            font=T.ui_font(11, "bold"),
+            fg_color=T.ACCENT,
+            hover_color=T.ACCENT_HOVER,
+            text_color="#FFFFFF",
+            corner_radius=6,
+            command=self._open_update_download,
+        ).pack(side="right")
 
         # ---------------------------------------------------------------------
         # Card A: Account Setup & Controls
@@ -618,30 +681,69 @@ class GeminiClaimerApp(ctk.CTk):
         action_row = ctk.CTkFrame(setup_inner, fg_color="transparent")
         action_row.pack(fill="x", pady=(14, 0))
 
+        self._browser_option_map = {
+            "Auto-Detect": "auto",
+            "Google Chrome": "chrome",
+            "Microsoft Edge": "edge",
+            "Brave": "brave",
+        }
+
+        left_controls = ctk.CTkFrame(action_row, fg_color="transparent")
+        left_controls.pack(side="left", fill="y")
+
+        browser_row = ctk.CTkFrame(left_controls, fg_color="transparent")
+        browser_row.pack(anchor="w")
+
+        ctk.CTkLabel(
+            browser_row,
+            text="Browser",
+            font=T.ui_font(11, "bold"),
+            text_color=T.TEXT_MUTED,
+        ).pack(side="left", padx=(0, 8))
+
+        self.opt_browser = ctk.CTkOptionMenu(
+            browser_row,
+            values=list(self._browser_option_map.keys()),
+            width=142,
+            height=28,
+            font=T.ui_font(11),
+            dropdown_font=T.ui_font(11),
+            fg_color=T.BG_INPUT,
+            button_color=T.BG_SUBCARD,
+            button_hover_color=T.BG_HOVER,
+            dropdown_fg_color=T.BG_CARD,
+            dropdown_hover_color=T.BG_HOVER,
+            dropdown_text_color=T.TEXT_PRIMARY,
+            text_color=T.TEXT_PRIMARY,
+            corner_radius=6,
+        )
+        self.opt_browser.set("Auto-Detect")
+        self.opt_browser.pack(side="left")
+
         if SHOW_VISUAL_BROWSER_OPTION:
             self.chk_browser = ctk.CTkCheckBox(
-                action_row,
+                left_controls,
                 text="Show visual progress window",
-                font=T.ui_font(12),
+                font=T.ui_font(11),
                 text_color=T.TEXT_SECONDARY,
                 fg_color=T.ACCENT,
                 hover_color=T.ACCENT_HOVER,
                 border_color=T.BORDER_GHOST,
                 border_width=1,
-                checkbox_width=18,
-                checkbox_height=18,
-                corner_radius=5,
+                checkbox_width=16,
+                checkbox_height=16,
+                corner_radius=4,
             )
-            self.chk_browser.pack(side="left", pady=4)
+            self.chk_browser.pack(anchor="w", pady=(6, 0))
             self.chk_browser.select()
         else:
             self.chk_browser = None
             ctk.CTkLabel(
-                action_row,
-                text="Runs silently in background  •  Credentials saved locally",
-                font=T.ui_font(11),
+                left_controls,
+                text="Runs silently in background  •  Saved locally",
+                font=T.ui_font(10),
                 text_color=T.TEXT_MUTED,
-            ).pack(side="left", pady=4)
+            ).pack(anchor="w", pady=(4, 0))
 
         btn_cluster = ctk.CTkFrame(action_row, fg_color="transparent")
         btn_cluster.pack(side="right")
@@ -1236,6 +1338,39 @@ class GeminiClaimerApp(ctk.CTk):
         modal = DiagnosticsModal(self)
         self.wait_window(modal)
 
+    def _start_update_check(self):
+        """Runs a non-blocking background check against GitHub Releases."""
+        from app.core.updater import check_for_update
+
+        def _worker():
+            info = check_for_update()
+            if info:
+                try:
+                    if self.winfo_exists():
+                        self.after(
+                            0,
+                            lambda: self._show_update_banner(
+                                info["latest_version"],
+                                info["download_url"],
+                            ),
+                        )
+                except Exception:
+                    pass
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _show_update_banner(self, latest_version: str, download_url: str):
+        """Displays a subtle non-intrusive banner when a newer release is published."""
+        self._update_download_url = download_url
+        self.lbl_update_msg.configure(
+            text=f"Update available: {latest_version} is now released (current: {APP_VERSION})."
+        )
+        self.update_banner.pack(fill="x", pady=(0, 10), before=self.config_card)
+
+    def _open_update_download(self):
+        if self._update_download_url:
+            webbrowser.open(self._update_download_url)
+
     def _set_fields_state(self, state: str):
         """Enable or disable all configuration and profile setup fields ('normal' or 'disabled')."""
         bg = T.BG_INPUT if state == "normal" else T.BG_INPUT_DISABLED
@@ -1244,6 +1379,8 @@ class GeminiClaimerApp(ctk.CTk):
         for entry in (self.entry_email, self.entry_password, self.entry_fname, self.entry_lname, self.entry_phone):
             entry.configure(state=state, fg_color=bg, text_color=fg, border_color=border)
         self.btn_randomize.configure(state=state)
+        if hasattr(self, "opt_browser") and self.opt_browser:
+            self.opt_browser.configure(state=state)
         if self.chk_browser:
             self.chk_browser.configure(state=state)
 
@@ -1344,6 +1481,8 @@ class GeminiClaimerApp(ctk.CTk):
         lname = self.entry_lname.get().strip()
         phone = self.entry_phone.get().strip()
         show_browser = self.chk_browser.get() if self.chk_browser else False
+        selected_browser_label = self.opt_browser.get() if hasattr(self, "opt_browser") and self.opt_browser else "Auto-Detect"
+        preferred_browser = self._browser_option_map.get(selected_browser_label, "auto")
 
         if not email or "@gmail.com" not in email.lower():
             self._set_inline_error(
@@ -1389,6 +1528,7 @@ class GeminiClaimerApp(ctk.CTk):
             last_name=lname,
             phone_number=phone,
             headless=not show_browser,
+            preferred_browser=preferred_browser,
             allow_manual_verification=True,
             on_log=lambda msg, lvl: self.log_queue.put((msg, lvl)),
             on_request_otp=self._on_request_otp,
@@ -1497,7 +1637,8 @@ class GeminiClaimerApp(ctk.CTk):
             self._set_progress_state("idle")
 
     def _on_error_callback(self, err_msg: str):
-        formatted = normalize_error_message(err_msg, for_log=False)
+        active_mode = getattr(self.active_claimer, "mode", None)
+        formatted = normalize_error_message(err_msg, for_log=False, mode=active_mode)
         messagebox.showerror("Notice", formatted, parent=self)
 
     def _on_success_callback(self, redemption_url: str):
