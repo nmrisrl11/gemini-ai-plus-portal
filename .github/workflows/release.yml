@@ -36,8 +36,9 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
-      - name: Cache Nuitka toolchain & ccache
-        uses: actions/cache@v4
+      - name: Restore Nuitka toolchain & ccache
+        id: nuitka_cache
+        uses: actions/cache/restore@v4
         with:
           path: ~/AppData/Local/Nuitka/Nuitka/Cache
           key: nuitka-win-py312-${{ hashFiles('requirements.txt') }}-${{ github.sha }}
@@ -71,6 +72,13 @@ jobs:
           NUITKA_BUILD_DIR: C:\NuitkaBuild\gemini-portal
         run: |
           python scripts/build_nuitka.py --mode "${{ steps.meta.outputs.mode }}" --jobs 2
+
+      - name: Save Nuitka toolchain & ccache immediately
+        if: steps.nuitka_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/AppData/Local/Nuitka/Nuitka/Cache
+          key: ${{ steps.nuitka_cache.outputs.cache-primary-key }}
 
       - name: Locate release artifact
         id: artifact
@@ -147,6 +155,8 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_DEFAULT_REGION: auto
+          AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+          AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
           R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
           R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
         run: |
@@ -160,10 +170,19 @@ jobs:
           $ext = [System.IO.Path]::GetExtension($name)
           $latestName = "Gemini-AI-Plus-Portal-latest$ext"
 
+          # Normalize R2 endpoint (strip trailing slash or accidental /bucket suffix)
+          $endpoint = ($env:R2_ENDPOINT).Trim().TrimEnd('/')
+          if ($endpoint.EndsWith("/$bucket")) {
+            $endpoint = $endpoint.Substring(0, $endpoint.Length - $bucket.Length - 1)
+          }
+
+          # Force path-style addressing so AWS CLI does not connect to <bucket>.<account>.r2.cloudflarestorage.com (TLS cert mismatch)
+          aws configure set default.s3.addressing_style path
+
           # Upload versioned artifact, latest alias, and SHA256SUMS.txt
-          aws s3 cp "$path" "s3://$bucket/releases/$tag/$safeName" --endpoint-url "$env:R2_ENDPOINT" --cache-control "public, max-age=31536000, immutable"
-          aws s3 cp "$path" "s3://$bucket/latest/$latestName" --endpoint-url "$env:R2_ENDPOINT" --cache-control "public, max-age=300"
-          aws s3 cp "dist\SHA256SUMS.txt" "s3://$bucket/releases/$tag/SHA256SUMS.txt" --endpoint-url "$env:R2_ENDPOINT" --content-type "text/plain; charset=utf-8"
+          aws s3 cp "$path" "s3://$bucket/releases/$tag/$safeName" --endpoint-url "$endpoint" --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp "$path" "s3://$bucket/latest/$latestName" --endpoint-url "$endpoint" --cache-control "public, max-age=300"
+          aws s3 cp "dist\SHA256SUMS.txt" "s3://$bucket/releases/$tag/SHA256SUMS.txt" --endpoint-url "$endpoint" --content-type "text/plain; charset=utf-8"
 
           # Build and upload latest.json manifest for landing page & update checks
           $baseUrl = ($env:R2_PUBLIC_BASE_URL).TrimEnd('/')
@@ -180,7 +199,7 @@ jobs:
             released_at    = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
           } | ConvertTo-Json -Depth 3
           $manifest | Out-File -FilePath dist\latest.json -Encoding utf8
-          aws s3 cp "dist\latest.json" "s3://$bucket/latest/latest.json" --endpoint-url "$env:R2_ENDPOINT" --content-type "application/json; charset=utf-8" --cache-control "public, max-age=60"
+          aws s3 cp "dist\latest.json" "s3://$bucket/latest/latest.json" --endpoint-url "$endpoint" --content-type "application/json; charset=utf-8" --cache-control "public, max-age=60"
 
           echo "download_url=$versionedUrl" >> $env:GITHUB_OUTPUT
           echo "latest_url=$latestUrl" >> $env:GITHUB_OUTPUT
