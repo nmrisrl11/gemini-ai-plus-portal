@@ -125,11 +125,73 @@ jobs:
         run: |
           python scripts/virustotal_scan.py "${{ steps.artifact.outputs.path }}" --output-md dist\vt_report.md --max-wait 360
 
+      - name: Check Cloudflare R2 configuration
+        id: r2_check
+        shell: pwsh
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          $ready = (-not [string]::IsNullOrWhiteSpace($env:R2_ACCESS_KEY_ID)) -and (-not [string]::IsNullOrWhiteSpace($env:R2_SECRET_ACCESS_KEY)) -and (-not [string]::IsNullOrWhiteSpace($env:R2_ENDPOINT))
+          $bucket = if ([string]::IsNullOrWhiteSpace($env:R2_BUCKET)) { "ai-plus-releases" } else { $env:R2_BUCKET.Trim() }
+          echo "enabled=$($ready.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+          echo "bucket=$bucket" >> $env:GITHUB_OUTPUT
+
+      - name: Upload release & latest.json to Cloudflare R2
+        if: steps.r2_check.outputs.enabled == 'true'
+        id: r2_upload
+        shell: pwsh
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          $tag = "${{ steps.meta.outputs.tag }}"
+          $bucket = "${{ steps.r2_check.outputs.bucket }}"
+          $path = "${{ steps.artifact.outputs.path }}"
+          $name = "${{ steps.artifact.outputs.name }}"
+          $sha256 = "${{ steps.checksum.outputs.sha256 }}"
+          $size = (Get-Item $path).Length
+          $safeName = $name -replace ' ', '-'
+          $ext = [System.IO.Path]::GetExtension($name)
+          $latestName = "Gemini-AI-Plus-Portal-latest$ext"
+
+          # Upload versioned artifact, latest alias, and SHA256SUMS.txt
+          aws s3 cp "$path" "s3://$bucket/releases/$tag/$safeName" --endpoint-url "$env:R2_ENDPOINT" --cache-control "public, max-age=31536000, immutable"
+          aws s3 cp "$path" "s3://$bucket/latest/$latestName" --endpoint-url "$env:R2_ENDPOINT" --cache-control "public, max-age=300"
+          aws s3 cp "dist\SHA256SUMS.txt" "s3://$bucket/releases/$tag/SHA256SUMS.txt" --endpoint-url "$env:R2_ENDPOINT" --content-type "text/plain; charset=utf-8"
+
+          # Build and upload latest.json manifest for landing page & update checks
+          $baseUrl = ($env:R2_PUBLIC_BASE_URL).TrimEnd('/')
+          $versionedUrl = if ($baseUrl) { "$baseUrl/releases/$tag/$safeName" } else { "" }
+          $latestUrl = if ($baseUrl) { "$baseUrl/latest/$latestName" } else { "" }
+          $manifest = @{
+            version        = $tag
+            filename       = $safeName
+            size_bytes     = $size
+            sha256         = $sha256
+            download_url   = $versionedUrl
+            latest_url     = $latestUrl
+            virustotal_url = "https://www.virustotal.com/gui/file/$($sha256.ToLower())"
+            released_at    = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+          } | ConvertTo-Json -Depth 3
+          $manifest | Out-File -FilePath dist\latest.json -Encoding utf8
+          aws s3 cp "dist\latest.json" "s3://$bucket/latest/latest.json" --endpoint-url "$env:R2_ENDPOINT" --content-type "application/json; charset=utf-8" --cache-control "public, max-age=60"
+
+          echo "download_url=$versionedUrl" >> $env:GITHUB_OUTPUT
+          echo "latest_url=$latestUrl" >> $env:GITHUB_OUTPUT
+
       - name: Assemble Release Notes
         shell: pwsh
         run: |
           $tag = "${{ steps.meta.outputs.tag }}"
           $vt = Get-Content -Path dist\vt_report.md -Raw
+          $r2Url = "${{ steps.r2_upload.outputs.download_url }}"
+          $r2Line = if ($r2Url) { "- **Fast CDN Mirror (Cloudflare R2):** [Direct Download ($tag)]($r2Url)`n" } else { "" }
           @"
           ## Gemini AI Plus Portal $tag
 
@@ -143,9 +205,8 @@ jobs:
           - **Gemini in Gmail & Gemini Notebook:** Direct Gmail integration + Audio & Video Overviews
 
           ### Installation
-          1. Download **`${{ steps.artifact.outputs.name }}`** below.
-          2. Double-click to launch directly (no Python or installation required).
-          3. Verify integrity using `SHA256SUMS.txt` if desired.
+          $r2Line- Download **`${{ steps.artifact.outputs.name }}`** below and double-click to launch directly (no Python or installation required).
+          - Verify integrity using `SHA256SUMS.txt` if desired.
 
           ---
 
