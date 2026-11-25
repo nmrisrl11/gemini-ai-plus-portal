@@ -13,11 +13,11 @@ on:
       build_mode:
         description: "Nuitka packaging mode"
         required: true
-        default: "standalone"
+        default: "onefile"
         type: choice
         options:
-          - standalone
           - onefile
+          - standalone
 
 permissions:
   contents: write
@@ -51,7 +51,7 @@ jobs:
         shell: pwsh
         run: |
           $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
-          $mode = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.build_mode }}" } else { "standalone" }
+          $mode = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.build_mode }}" } else { "onefile" }
           echo "tag=$tag" >> $env:GITHUB_OUTPUT
           echo "mode=$mode" >> $env:GITHUB_OUTPUT
           echo "Release Tag: $tag | Build Mode: $mode"
@@ -63,7 +63,7 @@ jobs:
         run: |
           python scripts/build_nuitka.py --mode "${{ steps.meta.outputs.mode }}" --jobs 4
 
-      - name: Locate release artifact & generate SHA256SUMS.txt
+      - name: Locate release artifact
         id: artifact
         shell: pwsh
         run: |
@@ -74,10 +74,39 @@ jobs:
             $file = Get-ChildItem -Path dist -Filter "Gemini AI Plus Portal *-win64.zip" | Select-Object -First 1
           }
           if (-not $file) { throw "Release artifact not found in dist/" }
-          $hash = (Get-FileHash -Algorithm SHA256 -Path $file.FullName).Hash
-          "$hash  $($file.Name)" | Out-File -FilePath dist\SHA256SUMS.txt -Encoding utf8
           echo "path=$($file.FullName)" >> $env:GITHUB_OUTPUT
           echo "name=$($file.Name)" >> $env:GITHUB_OUTPUT
+
+      - name: Check SignPath.io signing configuration
+        id: signpath_check
+        shell: pwsh
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SIGNPATH_ORGANIZATION_ID: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+        run: |
+          $ready = ("${{ steps.meta.outputs.mode }}" -eq "onefile") -and (-not [string]::IsNullOrWhiteSpace($env:SIGNPATH_API_TOKEN)) -and (-not [string]::IsNullOrWhiteSpace($env:SIGNPATH_ORGANIZATION_ID))
+          echo "enabled=$($ready.ToString().ToLower())" >> $env:GITHUB_OUTPUT
+
+      - name: Code sign artifact with SignPath.io (when configured)
+        if: steps.signpath_check.outputs.enabled == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: gemini-ai-plus-portal
+          signing-policy-slug: release-signing
+          input-artifact-path: ${{ steps.artifact.outputs.path }}
+          output-artifact-path: ${{ steps.artifact.outputs.path }}
+          wait-for-completion: true
+
+      - name: Generate SHA256SUMS.txt
+        id: checksum
+        shell: pwsh
+        run: |
+          $path = "${{ steps.artifact.outputs.path }}"
+          $name = "${{ steps.artifact.outputs.name }}"
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $path).Hash
+          "$hash  $name" | Out-File -FilePath dist\SHA256SUMS.txt -Encoding utf8
           echo "sha256=$hash" >> $env:GITHUB_OUTPUT
 
       - name: Scan release artifact with VirusTotal
@@ -95,7 +124,7 @@ jobs:
           @"
           ## Gemini AI Plus Portal $tag
 
-          Hardened native Windows build compiled cleanly from open-source code via GitHub Actions + Nuitka.
+          Hardened native Windows single-file binary compiled cleanly from open-source code via GitHub Actions + Nuitka.
 
           ### Included Google AI Plus Plan Benefits (12 Months at No Cost)
           - **Gemini app:** Double usage limits + Hydrogen model access
@@ -106,7 +135,7 @@ jobs:
 
           ### Installation
           1. Download **`${{ steps.artifact.outputs.name }}`** below.
-          2. Extract the archive (for portable ZIP) and run **`Gemini AI Plus Portal $tag.exe`**.
+          2. Double-click to launch directly (no Python or installation required).
           3. Verify integrity using `SHA256SUMS.txt` if desired.
 
           ---

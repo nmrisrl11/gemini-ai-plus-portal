@@ -191,22 +191,22 @@ python main.py --cli --email "youraccount@gmail.com" --password "YourSecurePassw
 You can compile a single-file portable binary from the latest source code using either builder:
 
 #### Option A: Hardened Native C Binary (Recommended — Anti-Reverse Engineering)
-Compiles Python directly into native C machine code with GCC inside a space-free build directory (`C:\NuitkaBuild\gemini-portal`) and bundles only runtime assets:
+Compiles Python directly into native C machine code with GCC inside a space-free build directory (`C:\NuitkaBuild\gemini-portal`), compresses with Zstandard, and bundles only runtime assets:
 - **Via Batch Script**: Double-click [`scripts/build_nuitka.bat`](scripts/build_nuitka.bat)
-- **Via Python (Portable Standalone ZIP — default, AV-friendly & instant startup)**: `python scripts/build_nuitka.py`
-- **Via Python (Single-File `.exe`)**: `python scripts/build_nuitka.py --mode onefile`
+- **Via Python (Single-File `.exe` — default)**: `python scripts/build_nuitka.py`
+- **Via Python (Standalone Portable Folder + ZIP)**: `python scripts/build_nuitka.py --mode standalone`
 
-*Benefits: Zero `.pyc` bytecode inside; cannot be unpacked by `pyinstxtractor`. Standalone mode avoids `%TEMP%` self-extraction heuristics on Windows Defender.*
+*Benefits: Zero `.pyc` bytecode inside; cannot be unpacked by `pyinstxtractor`.*
 
 #### Option B: Standard Portable Build (PyInstaller Fallback)
 Packages Python bytecode into a standard PyInstaller archive (`~61.4 MB`):
 - **Via Batch Script**: Double-click [`scripts/build_portable.bat`](scripts/build_portable.bat)
 - **Via Python**: Run `python scripts/build_portable.py`
 
-The resulting release archive (`dist\Gemini AI Plus Portal v1.0.0-win64.zip`) or standalone executable (`dist\Gemini AI Plus Portal v1.0.0.exe`) will be written to `dist\`.
+The resulting standalone executable (`dist\Gemini AI Plus Portal v1.0.0.exe`) will be written to `dist\`.
 
-#### Automated GitHub Actions Releases & VirusTotal Verification
-Pushing a version tag (e.g., `v1.0.0`) or triggering **Actions → Build & Publish Windows Release** automatically builds the Windows binary on `windows-latest`, generates `SHA256SUMS.txt`, scans the artifact via [VirusTotal API v3](scripts/virustotal_scan.py) (using the `VIRUSTOTAL_API_KEY` repository secret), and embeds the full security report directly into the GitHub Release notes.
+#### Automated GitHub Actions Releases, SignPath Code Signing & VirusTotal Verification
+Pushing a version tag (e.g., `v1.0.0`) or triggering **Actions → Build & Publish Windows Release** automatically builds the single-file `.exe` on `windows-latest`, optionally code-signs it via **SignPath.io** (when `SIGNPATH_API_TOKEN` and `SIGNPATH_ORGANIZATION_ID` secrets are configured), generates `SHA256SUMS.txt`, scans the binary via [VirusTotal API v3](scripts/virustotal_scan.py) (`VIRUSTOTAL_API_KEY` secret), and embeds the full security report directly into the GitHub Release notes.
 
 ---
 

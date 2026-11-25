@@ -214,11 +214,11 @@ A comprehensive unit test suite is maintained in `scratch/test_suite.py` contain
 The project provides dual build pipelines to serve both tamper-proof production deployment and development fallback:
 
 ### Primary: Hardened Native C Compiler (Nuitka + GitHub Actions CI)
-1. Double-click [`scripts/build_nuitka.bat`](scripts/build_nuitka.bat) or run `python scripts/build_nuitka.py` (default `--mode standalone` portable ZIP; pass `--mode onefile` for a single `.exe`).
-2. Translates Python directly into C, compiles with MinGW-w64 GCC (`--jobs=4`, `--lto=no`), isolates intermediate compilation inside a space-free workspace (`C:\NuitkaBuild\gemini-portal`), and bundles only the 6 runtime image assets (excluding `logo_raw.jpg` and `preview.PNG`).
-3. Output archive: `dist\Gemini AI Plus Portal v1.0.0-win64.zip` (or `dist\Gemini AI Plus Portal v1.0.0.exe` in onefile mode).
-4. **CI & VirusTotal:** `.github/workflows/release.yml` builds on `windows-latest` for `v*` tags or manual dispatch, generates `SHA256SUMS.txt`, runs `scripts/virustotal_scan.py` via `${{ secrets.VIRUSTOTAL_API_KEY }}`, and embeds the full VirusTotal report into the GitHub Release notes.
-5. **Security:** Native machine code; zero `.pyc` files; immune to `pyinstxtractor`. Standalone mode avoids `%TEMP%` self-extracting dropper heuristics on Windows Defender.
+1. Double-click [`scripts/build_nuitka.bat`](scripts/build_nuitka.bat) or run `python scripts/build_nuitka.py` (default `--mode onefile` single `.exe`; pass `--mode standalone` for a folder + ZIP).
+2. Translates Python directly into C, compiles with MinGW-w64 GCC (`--jobs=4`, `--lto=no`), compresses with `zstandard`, isolates intermediate compilation inside a space-free workspace (`C:\NuitkaBuild\gemini-portal`), and bundles only the 6 runtime image assets (excluding `logo_raw.jpg` and `preview.PNG`).
+3. Output executable: `dist\Gemini AI Plus Portal v1.0.0.exe` (~43 MB).
+4. **CI, Code Signing & VirusTotal:** `.github/workflows/release.yml` builds on `windows-latest` for `v*` tags or manual dispatch, optionally code-signs via SignPath.io (`SIGNPATH_API_TOKEN` + `SIGNPATH_ORGANIZATION_ID`), generates `SHA256SUMS.txt`, runs `scripts/virustotal_scan.py` via `${{ secrets.VIRUSTOTAL_API_KEY }}`, and embeds the full VirusTotal report into the GitHub Release notes.
+5. **Security:** Native machine code; zero `.pyc` files; immune to `pyinstxtractor`.
 
 ### Fallback: Standard Portable Packager (PyInstaller)
 1. Double-click [`scripts/build_portable.bat`](scripts/build_portable.bat) (or run `python scripts/build_portable.py`).

@@ -6,8 +6,8 @@ Produces true native Windows PE machine-code binaries (x86-64) that cannot be
 unpacked by pyinstxtractor or Python decompilers.
 
 Usage:
-    python scripts/build_nuitka.py                    # Default: standalone folder + portable .zip (AV-friendly, instant startup)
-    python scripts/build_nuitka.py --mode onefile     # Optional: single-file compressed .exe
+    python scripts/build_nuitka.py                    # Default: single-file compressed .exe (onefile)
+    python scripts/build_nuitka.py --mode standalone  # Optional: standalone folder + portable .zip
 """
 
 import argparse
@@ -128,7 +128,7 @@ def _zip_directory(source_dir: str, zip_path: str, root_folder_name: str):
                 zf.write(abs_file, arcname)
 
 
-def build(mode: str = "standalone", jobs: int = 4) -> bool:
+def build(mode: str = "onefile", jobs: int = 4) -> bool:
     mode = mode.lower().strip()
     print("=" * 76)
     print(f"   {APP_NAME} — Native C Compiler Packager (Nuitka | mode={mode})")
@@ -240,9 +240,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Build Gemini AI Plus Portal with Nuitka")
     parser.add_argument(
         "--mode",
-        choices=["standalone", "onefile"],
-        default="standalone",
-        help="Build mode: 'standalone' (AV-friendly portable ZIP, default) or 'onefile' (single .exe)",
+        choices=["onefile", "standalone"],
+        default="onefile",
+        help="Build mode: 'onefile' (single portable .exe, default) or 'standalone' (folder + .zip)",
     )
     parser.add_argument("--jobs", type=int, default=4, help="Parallel C compilation jobs (default: 4)")
     args = parser.parse_args()
