@@ -86,7 +86,8 @@ Redeeming the extracted offer link activates **12 months of Google AI Plus at no
 
 ## Key Features
 
-- **Multi-Browser Zero-Bloat Automation**: Intelligent discovery cascade supporting Google Chrome, Microsoft Edge (natively pre-installed on 100% of Windows 10/11 systems), Brave Browser, Opera, or Vivaldi without forcing 400MB hermetic browser downloads.
+- **Multi-Browser Zero-Bloat Automation**: Intelligent discovery cascade supporting Google Chrome, Microsoft Edge (natively pre-installed on 100% of Windows 10/11 systems), Brave Browser, Opera, or Vivaldi without forcing 400MB hermetic browser downloads, plus a GUI **Browser** selector dropdown (`Auto-Detect`, `Google Chrome`, `Microsoft Edge`, `Brave`) and automatic outdated-Chrome fallback.
+- **Resilient Gateway Navigation & Update Checks**: Extended 50s gateway timeouts with automatic retry, dynamic User-Agent matching, headless-to-headed verification challenge fallback, and a non-blocking GitHub Releases update banner.
 - **Dynamic Execution Mode**: Operates in full headed visual mode during development, automatically switching to clean background headless execution when packaged as a portable executable.
 - **Canonical Link Extraction**: Automatically resolves nested authentication redirections and session tokens, yielding permanent, clean `https://one.google.com/offer/<CODE>` redemption links.
 - **Dual Delivery State Handling**: Seamlessly handles direct on-screen offer claims as well as accounts where the promotional grant is dispatched directly to the registered email address.
@@ -110,7 +111,7 @@ Redeeming the extracted offer link activates **12 months of Google AI Plus at no
 | **Native C Compiler** | **Nuitka** | `4.3+` | Python-to-C source code translation yielding tamper-proof native PE binaries |
 | **C Backend Toolchain** | **MinGW-w64 GCC** | `15.2.0` | Multi-threaded parallel C compiler (`--jobs=4`) generating x86-64 machine instructions |
 | **Compilation Cache** | **ccache** | Built-in | Compiler object cache for sub-2-minute incremental rebuilds |
-| **Payload Compression** | **Facebook Zstandard (`zstd`)** | `0.25.0` | High-ratio payload compression (26.3% ratio) reducing binary to `~44.6 MB` with instant startup |
+| **Payload Compression** | **Facebook Zstandard (`zstd`)** | `0.25.0` | High-ratio payload compression (25.6% ratio) reducing binary to `~43.0 MB` |
 | **Image & Icon Engine** | **Pillow (PIL)** | `11.0+` | Multi-resolution ICO generation (`16x16`–`256x256`), adaptive unsharp masking & donation QR rendering |
 | **Windows Shell API** | **Win32 Shell (`ctypes`)** | Native | Explicit `AppUserModelID` registration for proper Windows taskbar grouping and pinning |
 | **Fallback Packager** | **PyInstaller** | `6.0+` | Secondary standard bytecode packager fallback (`scripts/build_portable.bat`) |
@@ -139,7 +140,7 @@ dist\Gemini AI Plus Portal v1.0.0.exe
 ```
 
 - **No Python Required**: Includes all bundled dependencies.
-- **Portable & Compact**: Self-contained executable compressed with high-performance Zstandard (`~44.6 MB`).
+- **Portable & Compact**: Self-contained executable compressed with high-performance Zstandard (`~43.0 MB`).
 - **Hardened Security**: Compiled into native x86-64 machine code via Nuitka C translation (tamper-proof; immune to `pyinstxtractor` and Python bytecode decompilers).
 - **Silent Background Execution**: Browser automation runs headless in the background.
 
@@ -298,9 +299,11 @@ gemini-ai-plus-portal/
 │       ├── README.md                    # Recovery instructions
 │       ├── resume_browser_session.py    # CDP session attach script
 │       └── run_account_recovery.bat     # 1-click recovery launcher
+├── tests/                               # Automated unit & GUI smoke test suite
+│   └── test_portal.py
 ├── results/                             # Local storage for saved credentials & claim links
 └── dist/                                # Production output
-    └── Gemini AI Plus Portal v1.0.0.exe # Hardened native standalone binary (44.6 MB)
+    └── Gemini AI Plus Portal v1.0.0.exe # Hardened native standalone binary (~43.0 MB)
 ```
 
 ---

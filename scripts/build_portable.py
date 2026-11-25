@@ -22,6 +22,15 @@ DIST_DIR = os.path.join(PROJECT_ROOT, "dist")
 BUILD_DIR = os.path.join(PROJECT_ROOT, "build")
 APP_NAME = f"{PORTAL_NAME} {APP_VERSION}"
 
+RUNTIME_IMAGE_FILES = (
+    "app_icon.ico",
+    "app_icon.png",
+    "check.png",
+    "shuffle.png",
+    "qrcode-bmc.png",
+    "qrcode-gcash.JPG",
+)
+
 
 def build():
     print("=" * 72)
@@ -39,7 +48,7 @@ def build():
     if os.path.exists(BUILD_DIR):
         shutil.rmtree(BUILD_DIR, ignore_errors=True)
 
-    # 3. Assemble PyInstaller arguments
+    # 3. Assemble PyInstaller arguments (runtime images only; excludes logo_raw.jpg & preview.PNG)
     cmd = [
         sys.executable,
         "-m",
@@ -49,14 +58,17 @@ def build():
         "--name",
         APP_NAME,
         f"--icon={ICON_ICO}",
-        f"--add-data={IMAGES_DIR};assets/images",
         "--collect-all",
         "customtkinter",
         "--collect-all",
         "playwright",
         "--clean",
-        os.path.join(PROJECT_ROOT, "main.py"),
     ]
+    for img_name in RUNTIME_IMAGE_FILES:
+        src_img = os.path.join(IMAGES_DIR, img_name)
+        if os.path.exists(src_img):
+            cmd.append(f"--add-data={src_img};assets/images")
+    cmd.append(os.path.join(PROJECT_ROOT, "main.py"))
 
     print(f"[*] Running PyInstaller compilation for: {APP_NAME}.exe...")
     ret = subprocess.call(cmd, cwd=PROJECT_ROOT)

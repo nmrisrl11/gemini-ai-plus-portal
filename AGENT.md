@@ -23,7 +23,7 @@ The software replaces tedious manual navigation, regional demographic formatting
 - **GUI Framework:** `customtkinter` (Dark Mode, blue theme)
 - **Automation Engine:** `playwright.sync_api` (Intelligent multi-browser cascade: Chrome $\to$ Edge $\to$ Brave/Chromium direct scan $\to$ Playwright cache)
 - **Image Processing:** `pillow` (PIL) for QR rendering, icon manipulation, ray-cast alpha matting, and ICO generation
-- **Packaging (Primary):** `nuitka` v4.3+ (Translates Python directly to native C, compiled via MinGW-w64 GCC into tamper-proof x86-64 machine code, compressed with `zstandard`; produces single-file `dist\Gemini AI Plus Portal v1.0.0.exe` @ 44.6 MB)
+- **Packaging (Primary):** `nuitka` v4.3+ (Translates Python directly to native C, compiled via MinGW-w64 GCC into tamper-proof x86-64 machine code, compressed with `zstandard`; produces single-file `dist\Gemini AI Plus Portal v1.0.0.exe` @ ~43.0 MB)
 - **Packaging (Fallback):** `pyinstaller` (Alternative standard Python bytecode packager)
 - **OS Platform:** Windows 10 & Windows 11 (requires Win32 Shell API for `AppUserModelID` taskbar binding)
 
@@ -82,9 +82,11 @@ gemini-ai-plus-portal/
 │       ├── README.md                    # Recovery instructions
 │       ├── resume_browser_session.py    # CDP session attach script
 │       └── run_account_recovery.bat     # 1-click recovery launcher
+├── tests/                               # Automated unit & GUI smoke test suite
+│   └── test_portal.py
 ├── results/                             # Output archive for generated credentials & links (.gitignored)
 └── dist/                                # Production output
-    └── Gemini AI Plus Portal v1.0.0.exe # Hardened native standalone binary (44.6 MB)
+    └── Gemini AI Plus Portal v1.0.0.exe # Hardened native standalone binary (~43.0 MB)
 ```
 
 ---
@@ -165,7 +167,7 @@ Upstream servers return raw JSON or unformatted English errors. `normalize_error
   5. Fallback `p.chromium.launch()` for unbundled source development
 - Bypasses the need to download or bundle the 400MB Chromium binary with the portable `.exe`.
 
-### 5. UI Cleanliness & Copywriting Rules
+### 6. UI Cleanliness & Copywriting Rules
 - **No Emojis:** All UI buttons, headers, activity logs, and modal labels use clean ASCII or text badges (`[i]`, `[OK]`, `[!]`, `[X]`).
 - **Open Source License:** Released under the MIT License (`LICENSE`). Keep user-facing copy clean and professional.
 - **Action Bar Simplicity:** Top-right action row contains only `[ Support Dev ]`. The About modal is accessible via the footer link and the <kbd>F1</kbd> hotkey.
@@ -174,16 +176,16 @@ Upstream servers return raw JSON or unformatted English errors. `normalize_error
 
 ## 6. Testing & Quality Assurance
 
-A comprehensive unit test suite is maintained in `scratch/test_suite.py` containing **30 automated tests**:
-- Normalization & error handling tests.
-- CAPTCHA / Cloudflare Turnstile passive vs active challenge tests.
-- UI state transitions, stepper resets, button label validations.
-- Modal instantiations (`AboutModal`, `SupportModal`, `DiagnosticsModal`, `OTPDialog`).
-- Build mode simulation (verifying `IS_PORTABLE` toggles).
+An automated unit and GUI smoke test suite is maintained in `tests/test_portal.py`:
+- Context-aware error normalization (`register` vs `login`) and HTTP 403/429 handling.
+- Dynamic User-Agent generation and outdated Chrome (`< v120`) Edge fallback.
+- Gateway navigation retry (`_goto_with_retry`) and headless-to-headed verification challenge fallback.
+- Preferred browser selection and GitHub Releases update checker (`app/core/updater.py`).
+- Live CustomTkinter GUI smoke test (browser dropdown + update banner).
 
 **How to run tests:**
 ```powershell
-& ".\.venv\Scripts\python.exe" "scratch\verify_v1_0_2.py"
+& ".\.venv\Scripts\python.exe" "tests\test_portal.py"
 ```
 
 ### D. Career Preferences Synchronization & Claim Extraction (Updated October 2026)
