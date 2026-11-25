@@ -16,15 +16,17 @@ if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
     EXE_DIR = os.path.dirname(sys.executable)
     RESULTS_DIR = os.path.join(EXE_DIR, "results")
 elif IS_PORTABLE:
-    # Nuitka onefile / standalone mode
-    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+    # Nuitka onefile / standalone mode (app/config.py -> parent is bundle root)
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     EXE_DIR = os.path.dirname(os.path.abspath(sys.argv[0]))
     RESULTS_DIR = os.path.join(EXE_DIR, "results")
 else:
-    PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+    # Source mode (app/config.py -> parent is repository root)
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
 
-IMAGES_DIR = os.path.join(PROJECT_ROOT, "images")
+ASSETS_DIR = os.path.join(PROJECT_ROOT, "assets")
+IMAGES_DIR = os.path.join(ASSETS_DIR, "images")
 ICONS_DIR = IMAGES_DIR  # Alias pointing to merged images directory
 
 APP_VERSION = "v1.0.1"

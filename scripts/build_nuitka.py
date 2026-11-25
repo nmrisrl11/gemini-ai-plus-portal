@@ -13,13 +13,14 @@ import sys
 import shutil
 import subprocess
 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from constants import APP_VERSION
+from app.config import APP_VERSION
 
-IMAGES_DIR = os.path.join(PROJECT_ROOT, "images")
+IMAGES_DIR = os.path.join(PROJECT_ROOT, "assets", "images")
 ICON_ICO = os.path.join(IMAGES_DIR, "app_icon.ico")
 DIST_DIR = os.path.join(PROJECT_ROOT, "dist")
 APP_NAME = f"Google AI Plus Portal {APP_VERSION}"
@@ -63,7 +64,7 @@ def build():
     # 1. Verify required icon exists
     if not os.path.exists(ICON_ICO):
         print(f"[*] Icon not found. Generating {ICON_ICO}...")
-        from convert_icon import process_icon
+        from scripts.convert_icon import process_icon
         process_icon()
 
     # 2. Clean stale build directories
@@ -89,7 +90,7 @@ def build():
         "--include-package-data=customtkinter",
         "--include-package-data=playwright",
         "--playwright-include-browser=none", # Lean binary: attaches to system Chrome/Edge/Brave
-        f"--include-data-dir={IMAGES_DIR}=images",
+        f"--include-data-dir={IMAGES_DIR}=assets/images",
         "--windows-company-name=nmrisrl11",
         "--windows-product-name=Google AI Plus Portal",
         "--windows-file-version=1.0.1.0",

@@ -6,10 +6,10 @@ Accessible via F12 or Ctrl+Shift+D.
 from tkinter import messagebox
 import customtkinter as ctk
 
-from claimer import normalize_error_message
-from constants import IMAGES_DIR
-from dialogs.otp_dialog import OTPDialog
-import theme as T
+from app.core.claimer import normalize_error_message
+from app.config import IMAGES_DIR
+from app.ui.dialogs.otp_dialog import OTPDialog
+from app.ui import theme as T
 
 
 class DiagnosticsModal(ctk.CTkToplevel):

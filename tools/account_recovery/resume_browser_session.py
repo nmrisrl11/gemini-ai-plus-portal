@@ -17,14 +17,14 @@ import socket
 import subprocess
 from typing import Dict, Optional
 
-# Resolve project root (parent directory of account_recovery)
+# Resolve project root (two levels above tools/account_recovery)
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from playwright.sync_api import sync_playwright
-from claimer import GeminiAIClaimer
+from app.core.claimer import GeminiAIClaimer
 
 CDP_PORT = 9222
 TARGET_URL = "https://internshala.com/user_preference/preferences"
@@ -323,7 +323,7 @@ def run_recovery(browser_choice: Optional[str] = None):
         print("  STEP 3: CLAIMING 12-MONTH FREE GEMINI PLUS PROMO LINK")
         print("-------------------------------------------------------")
         redemption_url = claimer._step_claim_gemini(target_page, context)
-        from claimer import clean_google_one_url
+        from app.core.claimer import clean_google_one_url
         redemption_url = clean_google_one_url(redemption_url)
 
         # Attempt to detect session email for saving record
@@ -340,7 +340,7 @@ def run_recovery(browser_choice: Optional[str] = None):
 
         if redemption_url == "EMAIL_DISPATCHED":
             try:
-                from gui import save_result_file
+                from app.ui.main_window import save_result_file
                 save_result_file(
                     email=session_email,
                     password="(Existing Authenticated Session)",
@@ -367,7 +367,7 @@ def run_recovery(browser_choice: Optional[str] = None):
             return True
         elif redemption_url:
             try:
-                from gui import save_result_file
+                from app.ui.main_window import save_result_file
                 saved_path = save_result_file(
                     email=session_email,
                     password="(Existing Authenticated Session)",

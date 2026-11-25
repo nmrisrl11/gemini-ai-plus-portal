@@ -6,8 +6,8 @@ import os
 from PIL import Image
 import customtkinter as ctk
 
-from constants import IMAGES_DIR
-import theme as T
+from app.config import IMAGES_DIR
+from app.ui import theme as T
 
 
 class SupportModal(ctk.CTkToplevel):

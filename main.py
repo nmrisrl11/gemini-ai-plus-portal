@@ -40,8 +40,8 @@ except ImportError:
     from PIL import Image
 
 import argparse
-from gui import GeminiClaimerApp, save_result_file
-from claimer import GeminiAIClaimer, generate_secure_password
+from app.ui.main_window import GeminiClaimerApp, save_result_file
+from app.core.claimer import GeminiAIClaimer, generate_secure_password
 
 
 def run_cli(args):

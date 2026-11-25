@@ -9,8 +9,9 @@ import os
 import sys
 from PIL import Image, ImageDraw, ImageFilter
 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-IMAGES_DIR = os.path.join(PROJECT_ROOT, "images")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+IMAGES_DIR = os.path.join(PROJECT_ROOT, "assets", "images")
 
 
 def extract_squircle_icon(img: Image.Image) -> Image.Image:
@@ -86,7 +87,7 @@ def process_icon(input_filename: str = None):
                 break
 
     if not input_filename:
-        print("[!] No logo_raw image found in images/ folder.")
+        print("[!] No logo_raw image found in assets/images/ folder.")
         return False
 
     input_path = os.path.join(IMAGES_DIR, input_filename)

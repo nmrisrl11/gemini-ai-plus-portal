@@ -25,7 +25,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-from claimer import (
+from app.core.claimer import (
     GeminiAIClaimer,
     FIRST_NAMES,
     LAST_NAMES,
@@ -37,7 +37,7 @@ from claimer import (
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
-from constants import (
+from app.config import (
     ICONS_DIR,
     IMAGES_DIR,
     RESULTS_DIR,
@@ -46,13 +46,13 @@ from constants import (
     SHOW_VISUAL_BROWSER_OPTION,
     DEFAULT_ACTIVITY_TEXT,
 )
-from dialogs import (
+from app.ui.dialogs import (
     OTPDialog,
     SupportModal,
     AboutModal,
     DiagnosticsModal,
 )
-import theme as T
+from app.ui import theme as T
 
 __all__ = [
     "GeminiClaimerApp",
@@ -70,7 +70,7 @@ def save_result_file(email: str, password: str, name: str, phone: str, url: str)
     """Saves provisioning credentials and generated redemption link into results folder."""
     os.makedirs(RESULTS_DIR, exist_ok=True)
 
-    from claimer import clean_google_one_url
+    from app.core.claimer import clean_google_one_url
     url = clean_google_one_url(url)
 
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
@@ -1500,7 +1500,7 @@ class GeminiClaimerApp(ctk.CTk):
         messagebox.showerror("Notice", formatted, parent=self)
 
     def _on_success_callback(self, redemption_url: str):
-        from claimer import clean_google_one_url
+        from app.core.claimer import clean_google_one_url
         redemption_url = clean_google_one_url(redemption_url)
         self.current_redemption_url = redemption_url
         email = self.entry_email.get().strip() or "your registered email"

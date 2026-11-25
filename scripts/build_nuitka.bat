@@ -7,12 +7,12 @@ echo    GOOGLE AI PLUS PORTAL - NATIVE C COMPILER BUILDER (NUITKA)
 echo ================================================================================
 echo.
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 :: 1. Detect Python executable
 set "PYTHON_EXE="
-if exist "%~dp0.venv\Scripts\python.exe" (
-    set "PYTHON_EXE=%~dp0.venv\Scripts\python.exe"
+if exist ".venv\Scripts\python.exe" (
+    set "PYTHON_EXE=%CD%\.venv\Scripts\python.exe"
     echo [OK] Using virtual environment Python: !PYTHON_EXE!
 ) else (
     where python >nul 2>&1
@@ -36,7 +36,7 @@ if !errorlevel! neq 0 (
 )
 
 echo.
-:: 3. Run build_nuitka.py
+:: 3. Run scripts\build_nuitka.py
 "%PYTHON_EXE%" "%~dp0build_nuitka.py"
 
 if !errorlevel! equ 0 (

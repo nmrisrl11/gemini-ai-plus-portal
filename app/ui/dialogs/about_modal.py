@@ -8,8 +8,8 @@ import webbrowser
 from PIL import Image
 import customtkinter as ctk
 
-from constants import APP_VERSION, DEVELOPER_GITHUB_URL, IMAGES_DIR
-import theme as T
+from app.config import APP_VERSION, DEVELOPER_GITHUB_URL, IMAGES_DIR
+from app.ui import theme as T
 
 
 class AboutModal(ctk.CTkToplevel):
@@ -238,7 +238,7 @@ class AboutModal(ctk.CTkToplevel):
         self.bind("<Escape>", lambda e: self.destroy())
 
     def _open_support_modal(self):
-        from dialogs.support_modal import SupportModal
+        from app.ui.dialogs.support_modal import SupportModal
         self.destroy()
         if hasattr(self.parent, "_show_support_modal"):
             self.parent._show_support_modal()

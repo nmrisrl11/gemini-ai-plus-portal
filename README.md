@@ -89,7 +89,7 @@ Manually claiming educational and student promotional subscriptions typically re
 | **Payload Compression** | **Facebook Zstandard (`zstd`)** | `0.25.0` | High-ratio payload compression (26.3% ratio) reducing binary to `~44.6 MB` with instant startup |
 | **Image & Icon Engine** | **Pillow (PIL)** | `11.0+` | Multi-resolution ICO generation (`16x16`–`256x256`), adaptive unsharp masking & donation QR rendering |
 | **Windows Shell API** | **Win32 Shell (`ctypes`)** | Native | Explicit `AppUserModelID` registration for proper Windows taskbar grouping and pinning |
-| **Fallback Packager** | **PyInstaller** | `6.0+` | Secondary standard bytecode packager fallback (`build_portable.bat`) |
+| **Fallback Packager** | **PyInstaller** | `6.0+` | Secondary standard bytecode packager fallback (`scripts/build_portable.bat`) |
 
 ---
 
@@ -167,15 +167,15 @@ You can compile a single-file portable binary from the latest source code using 
 
 #### Option A: Hardened Native C Binary (Recommended — Anti-Reverse Engineering)
 Compiles Python directly into native C machine code with GCC and packages it with Zstandard compression (`~44.6 MB`):
-- **Via Batch Script**: Double-click [`build_nuitka.bat`](build_nuitka.bat)
-- **Via Python**: Run `python build_nuitka.py`
+- **Via Batch Script**: Double-click [`scripts/build_nuitka.bat`](scripts/build_nuitka.bat)
+- **Via Python**: Run `python scripts/build_nuitka.py`
 
 *Benefits: Zero `.pyc` bytecode inside; cannot be unpacked by `pyinstxtractor`.*
 
 #### Option B: Standard Portable Build (PyInstaller Fallback)
 Packages Python bytecode into a standard PyInstaller archive (`~61.4 MB`):
-- **Via Batch Script**: Double-click [`build_portable.bat`](build_portable.bat)
-- **Via Python**: Run `python build_portable.py`
+- **Via Batch Script**: Double-click [`scripts/build_portable.bat`](scripts/build_portable.bat)
+- **Via Python**: Run `python scripts/build_portable.py`
 
 The resulting standalone executable will be written to `dist\Google AI Plus Portal v1.0.1.exe`.
 
@@ -221,38 +221,50 @@ flowchart LR
 
 ```text
 gemini-ai-plus-claimer/
-├── constants.py                     # Version, dynamic environment detection & paths
-├── claimer.py                       # Playwright browser engine & error normalization
-├── gui.py                           # CustomTkinter UI with high-DPI taskbar mipmaps
-├── main.py                          # Dual GUI/CLI entry point with AppUserModelID
-├── convert_icon.py                  # Multi-resolution ICO & transparent PNG generator
-├── build_nuitka.bat                 # 1-click hardened native C compiler (Nuitka + Zstd)
-├── build_nuitka.py                  # Scripted native C builder (tamper-proof binary)
-├── build_portable.bat               # 1-click fallback portable compiler (PyInstaller)
-├── build_portable.py                # Scripted PyInstaller builder
-├── run.bat                          # 1-click Windows source launcher
-├── requirements.txt                 # Python dependencies
-├── README.md                        # Documentation
-├── AGENT.md                         # Architecture blueprint & handoff guide
-├── images/                          # High-DPI icons, logos, and donation QRs
-│   ├── app_icon.ico                 # Multi-layer sharpened icon (16x16 to 256x256)
-│   ├── app_icon.png                 # 512x512 transparent PNG
-│   ├── qrcode-bmc.png               # Buy Me a Coffee QR
-│   ├── qrcode-gcash.JPG             # GCash QR
-│   └── shuffle.png                  # Randomize button icon
-├── dialogs/                         # Modular dialog controllers
-│   ├── __init__.py                  # Modal exports
-│   ├── about_modal.py               # About, expectations & privacy dialog (F1)
-│   ├── diagnostics_modal.py         # Developer edge case testing suite (F12)
-│   ├── otp_dialog.py                # 6-digit keystroke-validated OTP dialog
-│   └── support_modal.py             # Voluntary donation modal
-├── account_recovery/                # CDP live browser session recovery tool
-│   ├── README.md                    # Recovery instructions
-│   ├── resume_browser_session.py    # CDP session attach script
-│   └── run_account_recovery.bat     # 1-click recovery launcher
-├── results/                         # Local storage for saved credentials & claim links
-└── dist/                            # Production output
-    └── Google AI Plus Portal v1.0.1.exe  # Hardened native standalone binary (44.6 MB)
+├── main.py                              # Dual GUI/CLI entry point with AppUserModelID
+├── run.bat                              # 1-click Windows source launcher
+├── requirements.txt                     # Python dependencies
+├── README.md                            # Documentation
+├── AGENT.md                             # Architecture blueprint & handoff guide
+├── app/                                 # Core application package
+│   ├── __init__.py                      # Package exports
+│   ├── config.py                        # Version, dynamic environment detection & paths
+│   ├── core/                            # Business logic & automation engine
+│   │   ├── __init__.py
+│   │   └── claimer.py                   # Playwright browser engine & error normalization
+│   └── ui/                              # CustomTkinter desktop interface layer
+│       ├── __init__.py
+│       ├── theme.py                     # Centralized design tokens, fonts & Win11 titlebar
+│       ├── main_window.py               # Main application window & session report writer
+│       └── dialogs/                     # Modular modal dialog controllers
+│           ├── __init__.py              # Modal exports
+│           ├── about_modal.py           # About, expectations & privacy dialog (F1)
+│           ├── diagnostics_modal.py     # Developer edge case testing suite (F12)
+│           ├── otp_dialog.py            # 6-digit keystroke-validated OTP dialog
+│           └── support_modal.py         # Voluntary donation modal
+├── assets/                              # Static visual assets
+│   └── images/                          # High-DPI icons, logos, and donation QRs
+│       ├── app_icon.ico                 # Multi-layer sharpened icon (16x16 to 256x256)
+│       ├── app_icon.png                 # 512x512 transparent PNG
+│       ├── check.png                    # Stepper completion white check icon
+│       ├── logo_raw.jpg                 # Source reference icon artwork
+│       ├── qrcode-bmc.png               # Buy Me a Coffee QR
+│       ├── qrcode-gcash.JPG             # GCash QR
+│       └── shuffle.png                  # Randomize button icon
+├── scripts/                             # Packaging & asset build tooling
+│   ├── build_nuitka.bat                 # 1-click hardened native C compiler (Nuitka + Zstd)
+│   ├── build_nuitka.py                  # Scripted native C builder (tamper-proof binary)
+│   ├── build_portable.bat               # 1-click fallback portable compiler (PyInstaller)
+│   ├── build_portable.py                # Scripted PyInstaller builder
+│   └── convert_icon.py                  # Multi-resolution ICO & transparent PNG generator
+├── tools/                               # Standalone companion utilities
+│   └── account_recovery/                # CDP live browser session recovery tool
+│       ├── README.md                    # Recovery instructions
+│       ├── resume_browser_session.py    # CDP session attach script
+│       └── run_account_recovery.bat     # 1-click recovery launcher
+├── results/                             # Local storage for saved credentials & claim links
+└── dist/                                # Production output
+    └── Google AI Plus Portal v1.0.1.exe # Hardened native standalone binary (44.6 MB)
 ```
 
 ---
@@ -262,7 +274,7 @@ gemini-ai-plus-claimer/
 If a registration was completed manually or was interrupted midway by a security challenge, you do not need to start over:
 
 ```cmd
-cd account_recovery
+cd tools\account_recovery
 run_account_recovery.bat
 ```
 

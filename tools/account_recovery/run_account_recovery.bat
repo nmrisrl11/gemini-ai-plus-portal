@@ -23,7 +23,7 @@ if "%choice%"=="2" set "BROWSER_PARAM=chrome"
 if "%choice%"=="3" set "BROWSER_PARAM=edge"
 
 set "PY_EXE=python"
-if exist "..\.venv\Scripts\python.exe" set "PY_EXE=..\.venv\Scripts\python.exe"
+if exist "..\..\.venv\Scripts\python.exe" set "PY_EXE=..\..\.venv\Scripts\python.exe"
 
 echo.
 "%PY_EXE%" resume_browser_session.py %BROWSER_PARAM%

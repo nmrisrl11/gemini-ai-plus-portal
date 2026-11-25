@@ -4,8 +4,8 @@ Email verification OTP input dialog with strict 6-digit keystroke validation.
 
 import customtkinter as ctk
 
-from constants import IMAGES_DIR
-import theme as T
+from app.config import IMAGES_DIR
+from app.ui import theme as T
 
 
 class OTPDialog(ctk.CTkToplevel):
