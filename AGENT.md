@@ -11,7 +11,7 @@
 
 ## 1. Executive Summary
 
-**Gemini AI Plus Portal** is a high-performance Windows desktop automation tool designed to streamline the student promotional onboarding and link acquisition process for **12 months of free Gemini AI Plus (Gemini Advanced and 2TB Google One cloud storage)**.
+**Gemini AI Plus Portal** is a high-performance Windows desktop automation tool designed to streamline the student promotional onboarding and link acquisition process for **12 months of Google AI Plus at no cost (400 GB cloud storage across Google Photos, Drive, and Gmail, double Gemini app usage limits with Hydrogen model access, Google Flow, Google Search Nano Banana, Gemini in Gmail, Gemini Notebook, and Google Flow Music)**.
 
 The software replaces tedious manual navigation, regional demographic formatting, and multi-step verification forms with a 1-click automated background routine. It prompts the user only when their 6-digit email OTP arrives, extracts the official single-use redemption link (`https://one.google.com/offer/...`), and backs up the credentials locally.
 

@@ -98,7 +98,19 @@ class AboutModal(ctk.CTkToplevel):
         self._add_section_header(scroll_overview, "Purpose & Automation")
         self._add_paragraph(
             scroll_overview,
-            "An automated desktop utility designed to streamline the student promotional onboarding and link acquisition process for Gemini AI Plus (12 months of free Gemini Advanced & 2TB cloud storage).",
+            "An automated desktop utility designed to streamline the student promotional onboarding and link acquisition process for 12 months of Google AI Plus at no cost.",
+        )
+
+        self._add_section_header(scroll_overview, "Included Google AI Plus Benefits")
+        self._add_paragraph(
+            scroll_overview,
+            "• Gemini app: Double the usage limits than without a Google AI plan, plus access to Google's Hydrogen model.\n"
+            "• 400 GB storage: Total storage for Google Photos, Drive, and Gmail.\n"
+            "• Google Flow: More access to Google's AI creative studio for cinematic scenes and stories.\n"
+            "• Google Search: More access to Nano Banana in Search.\n"
+            "• Gemini in Gmail: Access Gemini directly in Gmail.\n"
+            "• Gemini Notebook: More access with Audio & Video Overviews, Quizzes, and more.\n"
+            "• Google Flow Music: More access to Google's AI music studio.",
         )
 
         self._add_section_header(scroll_overview, "Why Use This Tool?")

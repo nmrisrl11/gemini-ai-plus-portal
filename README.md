@@ -2,7 +2,7 @@
 
 # Gemini AI Plus Portal
 
-**Automated 12-Month Gemini Advanced & Gemini AI Plus Offer Link Generator**
+**Automated 12-Month Google AI Plus Offer Link Generator**
 
 [![Version](https://img.shields.io/badge/version-v1.0.1-blue.svg?style=flat-square)](https://github.com/nmrisrl11)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6.svg?style=flat-square)](https://microsoft.com/windows)
@@ -12,7 +12,7 @@
 [![Privacy](https://img.shields.io/badge/privacy-100%25%20Local%20%7C%20Zero%20Telemetry-10b981.svg?style=flat-square)](#privacy--data-guarantees)
 
 <p align="center">
-  A streamlined desktop automation utility engineered to simplify the promotional onboarding and acquisition flow for 12 months of free Gemini AI Plus (Gemini Advanced and 2TB Google One cloud storage).
+  A streamlined desktop automation utility engineered to simplify the promotional onboarding and acquisition flow for 12 months of Google AI Plus at no cost (400 GB cloud storage, expanded Gemini app limits with Hydrogen model access, Google Flow, Gemini in Gmail, Gemini Notebook, and more).
 </p>
 
 </div>
@@ -22,6 +22,7 @@
 ## Table of Contents
 
 - [Overview](#overview)
+- [Included Plan Benefits (Google AI Plus)](#included-plan-benefits-google-ai-plus)
 - [What It Does](#what-it-does)
 - [Key Features](#key-features)
 - [Tech Stack & Tools](#tech-stack--tools)
@@ -47,6 +48,22 @@
 Manually claiming educational and student promotional subscriptions typically requires navigating multi-step profile forms, formatting regional contact information, passing email verification gateways, and finding redemption endpoints.
 
 **Gemini AI Plus Portal** automates the entire navigation, data entry, and registration sequence locally in the background. It prompts the user only when their 6-digit email verification code (OTP) arrives, extracts the official Google One redemption link (`https://one.google.com/offer/...`), and saves the session details safely on your local disk.
+
+---
+
+## Included Plan Benefits (Google AI Plus)
+
+Redeeming the extracted offer link activates **12 months of Google AI Plus at no cost** (standard regional monthly pricing applies after 12 months unless canceled), which includes:
+
+- **Gemini app**: Double the usage limits compared to without a Google AI plan, plus access to Google's **Hydrogen** model.
+- **400 GB storage**: Total cloud storage shared across Google Photos, Drive, and Gmail.
+- **Google Flow**: More access to Google's AI creative studio to create cinematic scenes and stories with advanced generative models.
+- **Google Search**: More access to **Nano Banana** in Search.
+- **Gemini in Gmail**: Access Gemini directly inside Gmail.
+- **Gemini Notebook**: More access to Google's research partner with Audio & Video Overviews, Quizzes, and more.
+- **Google Flow Music**: More access to Google's AI music studio.
+
+*Note: Exact plan features, quotas, and post-trial pricing are determined by Google One and may vary by region.*
 
 ---
 
