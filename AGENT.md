@@ -33,9 +33,13 @@ The software replaces tedious manual navigation, regional demographic formatting
 
 ```text
 gemini-ai-plus-portal/
+├── .github/
+│   └── workflows/
+│       └── release.yml                  # Automated Windows Nuitka build + VirusTotal release CI
 ├── main.py                              # Dual GUI/CLI entry point with AppUserModelID registration
 ├── run.bat                              # 1-click Windows development launcher
 ├── requirements.txt                     # Pinned dependencies (including nuitka & zstandard)
+├── LICENSE                              # MIT License
 ├── README.md                            # Project documentation & user guides
 ├── AGENT.md                             # This file: Agent context, decisions, and handoff
 ├── .gitignore                           # Protects results/, .venv/, dist/, build/, and caches
@@ -44,7 +48,8 @@ gemini-ai-plus-portal/
 │   ├── config.py                        # Version, dynamic environment detection & path resolution
 │   ├── core/                            # Business logic & automation engine
 │   │   ├── __init__.py
-│   │   └── claimer.py                   # Core Playwright engine, demographic generators & error normalizers
+│   │   ├── claimer.py                   # Core Playwright engine, demographic generators & error normalizers
+│   │   └── updater.py                   # Non-blocking GitHub Releases update checker
 │   └── ui/                              # CustomTkinter desktop interface layer
 │       ├── __init__.py
 │       ├── theme.py                     # Centralized design tokens, typography & Win11 titlebar helpers
@@ -60,7 +65,8 @@ gemini-ai-plus-portal/
 │       ├── app_icon.ico                 # Multi-layer sharpened Windows icon (16x16 to 256x256)
 │       ├── app_icon.png                 # 512x512 transparent PNG
 │       ├── check.png                    # Stepper completion white checkmark icon
-│       ├── logo_raw.jpg                 # Source reference image from Gemini
+│       ├── logo_raw.jpg                 # Source reference image from Gemini (excluded from builds)
+│       ├── preview.PNG                  # Desktop UI preview screenshot (excluded from builds)
 │       ├── qrcode-bmc.png               # Buy Me a Coffee donation QR
 │       ├── qrcode-gcash.JPG             # GCash donation QR
 │       └── shuffle.png                  # Randomize button icon
@@ -69,7 +75,8 @@ gemini-ai-plus-portal/
 │   ├── build_nuitka.py                  # Scripted native C compiler (tamper-proof machine code)
 │   ├── build_portable.bat               # 1-click fallback portable builder (PyInstaller)
 │   ├── build_portable.py                # Scripted PyInstaller builder
-│   └── convert_icon.py                  # High-DPI ICO & transparent PNG generator with ray-casting
+│   ├── convert_icon.py                  # High-DPI ICO & transparent PNG generator with ray-casting
+│   └── virustotal_scan.py               # VirusTotal API v3 release scanner & Markdown report generator
 ├── tools/                               # Standalone companion utilities
 │   └── account_recovery/                # CDP live browser recovery safety net
 │       ├── README.md                    # Recovery instructions
@@ -206,11 +213,12 @@ A comprehensive unit test suite is maintained in `scratch/test_suite.py` contain
 
 The project provides dual build pipelines to serve both tamper-proof production deployment and development fallback:
 
-### Primary: Hardened Native C Compiler (Nuitka + Zstandard)
-1. Double-click [`scripts/build_nuitka.bat`](scripts/build_nuitka.bat) (or run `python scripts/build_nuitka.py`).
-2. Translates Python directly into C, compiles with MinGW-w64 GCC (`--jobs=4`, `--lto=no`), applies `zstandard` payload compression, and isolates intermediate compilation inside `%LOCALAPPDATA%\NuitkaBuild`.
-3. Output executable: `dist\Gemini AI Plus Portal v1.0.0.exe` (~44.6 MB).
-4. **Security:** Native machine code; zero `.pyc` files; immune to `pyinstxtractor`.
+### Primary: Hardened Native C Compiler (Nuitka + GitHub Actions CI)
+1. Double-click [`scripts/build_nuitka.bat`](scripts/build_nuitka.bat) or run `python scripts/build_nuitka.py` (default `--mode standalone` portable ZIP; pass `--mode onefile` for a single `.exe`).
+2. Translates Python directly into C, compiles with MinGW-w64 GCC (`--jobs=4`, `--lto=no`), isolates intermediate compilation inside a space-free workspace (`C:\NuitkaBuild\gemini-portal`), and bundles only the 6 runtime image assets (excluding `logo_raw.jpg` and `preview.PNG`).
+3. Output archive: `dist\Gemini AI Plus Portal v1.0.0-win64.zip` (or `dist\Gemini AI Plus Portal v1.0.0.exe` in onefile mode).
+4. **CI & VirusTotal:** `.github/workflows/release.yml` builds on `windows-latest` for `v*` tags or manual dispatch, generates `SHA256SUMS.txt`, runs `scripts/virustotal_scan.py` via `${{ secrets.VIRUSTOTAL_API_KEY }}`, and embeds the full VirusTotal report into the GitHub Release notes.
+5. **Security:** Native machine code; zero `.pyc` files; immune to `pyinstxtractor`. Standalone mode avoids `%TEMP%` self-extracting dropper heuristics on Windows Defender.
 
 ### Fallback: Standard Portable Packager (PyInstaller)
 1. Double-click [`scripts/build_portable.bat`](scripts/build_portable.bat) (or run `python scripts/build_portable.py`).

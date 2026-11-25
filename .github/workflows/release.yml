@@ -1,0 +1,125 @@
+name: Build & Publish Windows Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+        default: "v1.0.0"
+      build_mode:
+        description: "Nuitka packaging mode"
+        required: true
+        default: "standalone"
+        type: choice
+        options:
+          - standalone
+          - onefile
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify codebase compilation & imports
+        run: |
+          python -m compileall -q app main.py scripts tools
+          python -c "import app, app.config, app.core.claimer, app.core.updater, app.ui.main_window; print('VERIFIED:', app.config.APP_NAME, app.config.APP_VERSION)"
+
+      - name: Determine release tag & build mode
+        id: meta
+        shell: pwsh
+        run: |
+          $tag = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.tag }}" } else { "${{ github.ref_name }}" }
+          $mode = if ("${{ github.event_name }}" -eq "workflow_dispatch") { "${{ inputs.build_mode }}" } else { "standalone" }
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          echo "mode=$mode" >> $env:GITHUB_OUTPUT
+          echo "Release Tag: $tag | Build Mode: $mode"
+
+      - name: Build hardened native Windows binary (Nuitka)
+        shell: pwsh
+        env:
+          NUITKA_BUILD_DIR: C:\NuitkaBuild\gemini-portal
+        run: |
+          python scripts/build_nuitka.py --mode "${{ steps.meta.outputs.mode }}" --jobs 4
+
+      - name: Locate release artifact & generate SHA256SUMS.txt
+        id: artifact
+        shell: pwsh
+        run: |
+          $mode = "${{ steps.meta.outputs.mode }}"
+          if ($mode -eq "onefile") {
+            $file = Get-ChildItem -Path dist -Filter "Gemini AI Plus Portal *.exe" | Select-Object -First 1
+          } else {
+            $file = Get-ChildItem -Path dist -Filter "Gemini AI Plus Portal *-win64.zip" | Select-Object -First 1
+          }
+          if (-not $file) { throw "Release artifact not found in dist/" }
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $file.FullName).Hash
+          "$hash  $($file.Name)" | Out-File -FilePath dist\SHA256SUMS.txt -Encoding utf8
+          echo "path=$($file.FullName)" >> $env:GITHUB_OUTPUT
+          echo "name=$($file.Name)" >> $env:GITHUB_OUTPUT
+          echo "sha256=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: Scan release artifact with VirusTotal
+        shell: pwsh
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          python scripts/virustotal_scan.py "${{ steps.artifact.outputs.path }}" --output-md dist\vt_report.md --max-wait 360
+
+      - name: Assemble Release Notes
+        shell: pwsh
+        run: |
+          $tag = "${{ steps.meta.outputs.tag }}"
+          $vt = Get-Content -Path dist\vt_report.md -Raw
+          @"
+          ## Gemini AI Plus Portal $tag
+
+          Hardened native Windows build compiled cleanly from open-source code via GitHub Actions + Nuitka.
+
+          ### Included Google AI Plus Plan Benefits (12 Months at No Cost)
+          - **Gemini app:** Double usage limits + Hydrogen model access
+          - **400 GB storage:** Shared across Google Photos, Drive, and Gmail
+          - **Google Flow & Google Flow Music:** Expanded AI creative and music studio access
+          - **Google Search:** More access to Nano Banana in Search
+          - **Gemini in Gmail & Gemini Notebook:** Direct Gmail integration + Audio & Video Overviews
+
+          ### Installation
+          1. Download **`${{ steps.artifact.outputs.name }}`** below.
+          2. Extract the archive (for portable ZIP) and run **`Gemini AI Plus Portal $tag.exe`**.
+          3. Verify integrity using `SHA256SUMS.txt` if desired.
+
+          ---
+
+          $vt
+          "@ | Out-File -FilePath dist\release_notes.md -Encoding utf8
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: "Gemini AI Plus Portal ${{ steps.meta.outputs.tag }}"
+          body_path: dist/release_notes.md
+          files: |
+            ${{ steps.artifact.outputs.path }}
+            dist/SHA256SUMS.txt

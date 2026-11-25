@@ -191,18 +191,22 @@ python main.py --cli --email "youraccount@gmail.com" --password "YourSecurePassw
 You can compile a single-file portable binary from the latest source code using either builder:
 
 #### Option A: Hardened Native C Binary (Recommended — Anti-Reverse Engineering)
-Compiles Python directly into native C machine code with GCC and packages it with Zstandard compression (`~44.6 MB`):
+Compiles Python directly into native C machine code with GCC inside a space-free build directory (`C:\NuitkaBuild\gemini-portal`) and bundles only runtime assets:
 - **Via Batch Script**: Double-click [`scripts/build_nuitka.bat`](scripts/build_nuitka.bat)
-- **Via Python**: Run `python scripts/build_nuitka.py`
+- **Via Python (Portable Standalone ZIP — default, AV-friendly & instant startup)**: `python scripts/build_nuitka.py`
+- **Via Python (Single-File `.exe`)**: `python scripts/build_nuitka.py --mode onefile`
 
-*Benefits: Zero `.pyc` bytecode inside; cannot be unpacked by `pyinstxtractor`.*
+*Benefits: Zero `.pyc` bytecode inside; cannot be unpacked by `pyinstxtractor`. Standalone mode avoids `%TEMP%` self-extraction heuristics on Windows Defender.*
 
 #### Option B: Standard Portable Build (PyInstaller Fallback)
 Packages Python bytecode into a standard PyInstaller archive (`~61.4 MB`):
 - **Via Batch Script**: Double-click [`scripts/build_portable.bat`](scripts/build_portable.bat)
 - **Via Python**: Run `python scripts/build_portable.py`
 
-The resulting standalone executable will be written to `dist\Gemini AI Plus Portal v1.0.0.exe`.
+The resulting release archive (`dist\Gemini AI Plus Portal v1.0.0-win64.zip`) or standalone executable (`dist\Gemini AI Plus Portal v1.0.0.exe`) will be written to `dist\`.
+
+#### Automated GitHub Actions Releases & VirusTotal Verification
+Pushing a version tag (e.g., `v1.0.0`) or triggering **Actions → Build & Publish Windows Release** automatically builds the Windows binary on `windows-latest`, generates `SHA256SUMS.txt`, scans the artifact via [VirusTotal API v3](scripts/virustotal_scan.py) (using the `VIRUSTOTAL_API_KEY` repository secret), and embeds the full security report directly into the GitHub Release notes.
 
 ---
 
@@ -246,6 +250,9 @@ flowchart LR
 
 ```text
 gemini-ai-plus-portal/
+├── .github/
+│   └── workflows/
+│       └── release.yml                  # Automated Windows Nuitka build + VirusTotal release CI
 ├── main.py                              # Dual GUI/CLI entry point with AppUserModelID
 ├── run.bat                              # 1-click Windows source launcher
 ├── requirements.txt                     # Python dependencies
@@ -284,7 +291,8 @@ gemini-ai-plus-portal/
 │   ├── build_nuitka.py                  # Scripted native C builder (tamper-proof binary)
 │   ├── build_portable.bat               # 1-click fallback portable compiler (PyInstaller)
 │   ├── build_portable.py                # Scripted PyInstaller builder
-│   └── convert_icon.py                  # Multi-resolution ICO & transparent PNG generator
+│   ├── convert_icon.py                  # Multi-resolution ICO & transparent PNG generator
+│   └── virustotal_scan.py               # VirusTotal API v3 release scanner & Markdown reporter
 ├── tools/                               # Standalone companion utilities
 │   └── account_recovery/                # CDP live browser session recovery tool
 │       ├── README.md                    # Recovery instructions
