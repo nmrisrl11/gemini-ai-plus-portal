@@ -2,7 +2,7 @@
 
 > **Document Type:** Developer & Agent Handoff / Architecture Blueprint  
 > **Application:** Gemini AI Plus Portal  
-> **Current Version:** `v1.0.0` (Open Source Desktop Edition — MIT License)  
+> **Current Version:** `v1.0.1` (Open Source Desktop Edition — MIT License)  
 > **Repository:** `https://github.com/nmrisrl11/gemini-ai-plus-portal.git`  
 > **Primary Developer:** `@nmrisrl11`  
 > **Last Updated:** November 2026  
@@ -23,7 +23,7 @@ The software replaces tedious manual navigation, regional demographic formatting
 - **GUI Framework:** `customtkinter` (Dark Mode, blue theme)
 - **Automation Engine:** `playwright.sync_api` (Intelligent multi-browser cascade: Chrome $\to$ Edge $\to$ Brave/Chromium direct scan $\to$ Playwright cache)
 - **Image Processing:** `pillow` (PIL) for QR rendering, icon manipulation, ray-cast alpha matting, and ICO generation
-- **Packaging (Primary):** `nuitka` v4.3+ (Translates Python directly to native C, compiled via MinGW-w64 GCC into tamper-proof x86-64 machine code, compressed with `zstandard`; produces single-file `dist\Gemini AI Plus Portal v1.0.0.exe` @ ~43.0 MB)
+- **Packaging (Primary):** `nuitka` v4.3+ (Translates Python directly to native C, compiled via MinGW-w64 GCC into tamper-proof x86-64 machine code, compressed with `zstandard`; produces single-file `dist\Gemini AI Plus Portal v1.0.1.exe` @ ~43.0 MB)
 - **Packaging (Fallback):** `pyinstaller` (Alternative standard Python bytecode packager)
 - **OS Platform:** Windows 10 & Windows 11 (requires Win32 Shell API for `AppUserModelID` taskbar binding)
 
@@ -49,7 +49,7 @@ gemini-ai-plus-portal/
 │   ├── core/                            # Business logic & automation engine
 │   │   ├── __init__.py
 │   │   ├── claimer.py                   # Core Playwright engine, demographic generators & error normalizers
-│   │   └── updater.py                   # Non-blocking GitHub Releases update checker
+│   │   └── updater.py                   # Cloudflare R2 latest.json updater & remote status.json pause checker
 │   └── ui/                              # CustomTkinter desktop interface layer
 │       ├── __init__.py
 │       ├── theme.py                     # Centralized design tokens, typography & Win11 titlebar helpers
@@ -76,6 +76,7 @@ gemini-ai-plus-portal/
 │   ├── build_portable.bat               # 1-click fallback portable builder (PyInstaller)
 │   ├── build_portable.py                # Scripted PyInstaller builder
 │   ├── convert_icon.py                  # High-DPI ICO & transparent PNG generator with ray-casting
+│   ├── upload_r2.py                     # Cloudflare R2 release & latest.json uploader (boto3/OpenSSL)
 │   └── virustotal_scan.py               # VirusTotal API v3 release scanner & Markdown report generator
 ├── tools/                               # Standalone companion utilities
 │   └── account_recovery/                # CDP live browser recovery safety net
@@ -86,7 +87,7 @@ gemini-ai-plus-portal/
 │   └── test_portal.py
 ├── results/                             # Output archive for generated credentials & links (.gitignored)
 └── dist/                                # Production output
-    └── Gemini AI Plus Portal v1.0.0.exe # Hardened native standalone binary (~43.0 MB)
+    └── Gemini AI Plus Portal v1.0.1.exe # Hardened native standalone binary (~43.0 MB)
 ```
 
 ---
@@ -218,7 +219,7 @@ The project provides dual build pipelines to serve both tamper-proof production 
 ### Primary: Hardened Native C Compiler (Nuitka + GitHub Actions CI)
 1. Double-click [`scripts/build_nuitka.bat`](scripts/build_nuitka.bat) or run `python scripts/build_nuitka.py` (default `--mode onefile` single `.exe`; pass `--mode standalone` for a folder + ZIP).
 2. Translates Python directly into C, compiles with MinGW-w64 GCC (`--jobs=4`, `--lto=no`), compresses with `zstandard`, isolates intermediate compilation inside a space-free workspace (`C:\NuitkaBuild\gemini-portal`), and bundles only the 6 runtime image assets (excluding `logo_raw.jpg` and `preview.PNG`).
-3. Output executable: `dist\Gemini AI Plus Portal v1.0.0.exe` (~43 MB).
+3. Output executable: `dist\Gemini AI Plus Portal v1.0.1.exe` (~43 MB).
 4. **CI, Code Signing & VirusTotal:** `.github/workflows/release.yml` builds on `windows-latest` for `v*` tags or manual dispatch, optionally code-signs via SignPath.io (`SIGNPATH_API_TOKEN` + `SIGNPATH_ORGANIZATION_ID`), generates `SHA256SUMS.txt`, runs `scripts/virustotal_scan.py` via `${{ secrets.VIRUSTOTAL_API_KEY }}`, and embeds the full VirusTotal report into the GitHub Release notes.
 5. **Security:** Native machine code; zero `.pyc` files; immune to `pyinstxtractor`.
 
@@ -232,7 +233,7 @@ The project provides dual build pipelines to serve both tamper-proof production 
    - `--add-data="assets/images;assets/images"`
    - `--collect-all="customtkinter"`
    - `--collect-all="playwright"`
-3. Output executable: `dist\Gemini AI Plus Portal v1.0.0.exe` (~61.4 MB).
+3. Output executable: `dist\Gemini AI Plus Portal v1.0.1.exe` (~61.4 MB).
 
 ---
 

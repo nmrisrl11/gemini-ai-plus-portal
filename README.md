@@ -6,7 +6,7 @@
 
 **Automated 12-Month Google AI Plus Offer Link Generator**
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?style=flat-square)](https://github.com/nmrisrl11/gemini-ai-plus-portal/releases)
+[![Version](https://img.shields.io/badge/version-v1.0.1-blue.svg?style=flat-square)](https://github.com/nmrisrl11/gemini-ai-plus-portal/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D6.svg?style=flat-square)](https://microsoft.com/windows)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?style=flat-square)](https://python.org)
@@ -87,14 +87,14 @@ Redeeming the extracted offer link activates **12 months of Google AI Plus at no
 ## Key Features
 
 - **Multi-Browser Zero-Bloat Automation**: Intelligent discovery cascade supporting Google Chrome, Microsoft Edge (natively pre-installed on 100% of Windows 10/11 systems), Brave Browser, Opera, or Vivaldi without forcing 400MB hermetic browser downloads, plus a GUI **Browser** selector dropdown (`Auto-Detect`, `Google Chrome`, `Microsoft Edge`, `Brave`) and automatic outdated-Chrome fallback.
-- **Resilient Gateway Navigation & Update Checks**: Extended 50s gateway timeouts with automatic retry, dynamic User-Agent matching, headless-to-headed verification challenge fallback, and a non-blocking GitHub Releases update banner.
+- **Resilient Gateway Navigation, Live Status & Update Checks**: Extended 50s gateway timeouts with automatic retry, dynamic User-Agent matching, headless-to-headed verification challenge fallback, remote service-status/pause banner (`status.json` on Cloudflare R2 to protect user emails during partner downtime), and a non-blocking release update banner (`latest.json` with GitHub Releases fallback).
 - **Dynamic Execution Mode**: Operates in full headed visual mode during development, automatically switching to clean background headless execution when packaged as a portable executable.
 - **Canonical Link Extraction**: Automatically resolves nested authentication redirections and session tokens, yielding permanent, clean `https://one.google.com/offer/<CODE>` redemption links.
 - **Dual Delivery State Handling**: Seamlessly handles direct on-screen offer claims as well as accounts where the promotional grant is dispatched directly to the registered email address.
 - **Strict 6-Digit OTP Dialog**: Keystroke-level numeric enforcement, sanitized clipboard pasting, and automatic validation for email codes.
 - **Security & CAPTCHA Safety**: Proactively detects Cloudflare Turnstile, interstitials, reCAPTCHA, and server-side challenges, safely stopping to protect accounts from lockouts.
 - **Modular Component Architecture**: Separated dialog controllers for About, Voluntary Support, OTP Verification, and Diagnostics.
-- **Built-in Diagnostics Suite (<kbd>F12</kbd>)**: Test edge cases (OTP recovery loops, server rejections, and link banners) without consuming Gmail accounts.
+- **Built-in Diagnostics Suite (<kbd>F12</kbd>)**: Test edge cases (OTP recovery loops, server rejections, link banners, update notifications, and remote pause banners) without consuming Gmail accounts.
 - **High-DPI Desktop Branding**: Sharp, anti-aliased multi-resolution icon assets (`16x16` up to `256x256`) with Windows taskbar AppUserModelID integration.
 
 ---
@@ -136,7 +136,7 @@ Redeeming the extracted offer link activates **12 months of Google AI Plus at no
 No installation or technical setup required. Double-click the pre-compiled binary:
 
 ```cmd
-dist\Gemini AI Plus Portal v1.0.0.exe
+dist\Gemini AI Plus Portal v1.0.1.exe
 ```
 
 - **No Python Required**: Includes all bundled dependencies.
@@ -204,10 +204,10 @@ Packages Python bytecode into a standard PyInstaller archive (`~61.4 MB`):
 - **Via Batch Script**: Double-click [`scripts/build_portable.bat`](scripts/build_portable.bat)
 - **Via Python**: Run `python scripts/build_portable.py`
 
-The resulting standalone executable (`dist\Gemini AI Plus Portal v1.0.0.exe`) will be written to `dist\`.
+The resulting standalone executable (`dist\Gemini AI Plus Portal v1.0.1.exe`) will be written to `dist\`.
 
 #### Automated GitHub Actions Releases, SignPath Code Signing & VirusTotal Verification
-Pushing a version tag (e.g., `v1.0.0`) or triggering **Actions → Build & Publish Windows Release** automatically builds the single-file `.exe` on `windows-latest`, optionally code-signs it via **SignPath.io** (when `SIGNPATH_API_TOKEN` and `SIGNPATH_ORGANIZATION_ID` secrets are configured), generates `SHA256SUMS.txt`, scans the binary via [VirusTotal API v3](scripts/virustotal_scan.py) (`VIRUSTOTAL_API_KEY` secret), and embeds the full security report directly into the GitHub Release notes.
+Pushing a version tag (e.g., `v1.0.1`) or triggering **Actions → Build & Publish Windows Release** automatically builds the single-file `.exe` on `windows-latest`, optionally code-signs it via **SignPath.io** (when `SIGNPATH_API_TOKEN` and `SIGNPATH_ORGANIZATION_ID` secrets are configured), generates `SHA256SUMS.txt`, scans the binary via [VirusTotal API v3](scripts/virustotal_scan.py) (`VIRUSTOTAL_API_KEY` secret), uploads the artifact and `latest.json` to Cloudflare R2, and embeds the full security report directly into the GitHub Release notes.
 
 ---
 
@@ -303,7 +303,7 @@ gemini-ai-plus-portal/
 │   └── test_portal.py
 ├── results/                             # Local storage for saved credentials & claim links
 └── dist/                                # Production output
-    └── Gemini AI Plus Portal v1.0.0.exe # Hardened native standalone binary (~43.0 MB)
+    └── Gemini AI Plus Portal v1.0.1.exe # Hardened native standalone binary (~43.0 MB)
 ```
 
 ---

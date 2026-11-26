@@ -7,7 +7,7 @@ from tkinter import messagebox
 import customtkinter as ctk
 
 from app.core.claimer import normalize_error_message
-from app.config import IMAGES_DIR
+from app.config import DOWNLOAD_PAGE_URL, IMAGES_DIR
 from app.ui.dialogs.otp_dialog import OTPDialog
 from app.ui import theme as T
 
@@ -22,7 +22,7 @@ class DiagnosticsModal(ctk.CTkToplevel):
         self.transient(parent)
         self.grab_set()
 
-        T.center_modal(self, parent, 540, 510)
+        T.center_modal(self, parent, 540, 655)
         T.apply_modal_icon(self, IMAGES_DIR)
         self.after(60, lambda: T.apply_win11_titlebar(self, T.BG_WINDOW, T.TEXT_PRIMARY))
 
@@ -99,6 +99,24 @@ class DiagnosticsModal(ctk.CTkToplevel):
             title="CAPTCHA / Security Challenge Notice",
             desc="Triggers WAITING_USER status without repeated form submissions.",
             command=self._test_captcha_challenge,
+        )
+        self._add_sim_row(
+            wrapper,
+            tag="UPD",
+            tag_bg=T.ACCENT_SOFT,
+            tag_fg=T.ACCENT_TEXT,
+            title="Update Available Banner",
+            desc="Previews the release update banner and landing page download link.",
+            command=self._test_update_banner,
+        )
+        self._add_sim_row(
+            wrapper,
+            tag="PAUSE",
+            tag_bg=T.DANGER_BG,
+            tag_fg=T.DANGER_TEXT,
+            title="Promotion Paused Banner & Lock",
+            desc="Simulates remote status.json pause: shows banner and locks provisioning.",
+            command=self._test_service_paused,
         )
 
         # Footer
@@ -224,3 +242,21 @@ class DiagnosticsModal(ctk.CTkToplevel):
         )
         self.parent._append_log("Security challenge detection handled safely without repeated submissions.", "SUCCESS")
         self.parent._set_status("System Ready", T.SUCCESS)
+
+    def _test_update_banner(self):
+        self.destroy()
+        self.parent._append_log("[Diagnostic] Simulating newer release update banner (v1.0.1)...", "INFO")
+        self.parent._show_update_banner("v1.0.1", DOWNLOAD_PAGE_URL)
+        self.parent._append_log(f"[Diagnostic] Update banner active. Download URL: {DOWNLOAD_PAGE_URL}", "SUCCESS")
+
+    def _test_service_paused(self):
+        self.destroy()
+        self.parent._append_log("[Diagnostic] Simulating remote status.json paused state...", "WARNING")
+        self.parent._apply_service_status(
+            {
+                "status": "paused",
+                "title": "Promotion Temporarily Paused",
+                "message": "The partner promotion is temporarily paused due to high demand. Provisioning is disabled so you do not waste your Gmail account. Click 'Refresh Status' to re-check.",
+                "disable_actions": True,
+            }
+        )

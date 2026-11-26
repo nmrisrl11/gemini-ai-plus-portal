@@ -30,11 +30,12 @@ IMAGES_DIR = os.path.join(ASSETS_DIR, "images")
 ICONS_DIR = IMAGES_DIR  # Alias pointing to merged images directory
 
 APP_NAME = "Gemini AI Plus Portal"
-APP_VERSION = "v1.0.0"
+APP_VERSION = "v1.0.1"
 DEVELOPER_GITHUB_URL = "https://github.com/nmrisrl11"
 GITHUB_REPO = "nmrisrl11/gemini-ai-plus-portal"
 REPO_GITHUB_URL = f"https://github.com/{GITHUB_REPO}"
 UPDATE_MANIFEST_URL = "https://download-ai-plus-portal.nmrisrl.dev/latest/latest.json"
+SERVICE_STATUS_URL = "https://download-ai-plus-portal.nmrisrl.dev/status.json"
 RELEASES_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 DOWNLOAD_PAGE_URL = "https://gemini-ai-plus-portal.vercel.app"
 

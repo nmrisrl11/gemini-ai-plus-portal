@@ -49,6 +49,15 @@ def run_cli(args):
     print("   Gemini AI Plus Portal (CLI Mode)")
     print("=" * 68)
 
+    from app.core.updater import check_service_status
+    service_status = check_service_status()
+    if service_status:
+        print(f"\n[!] {service_status['title']}")
+        print(f"    {service_status['message']}\n")
+        if service_status.get("disable_actions"):
+            print("[-] Provisioning is currently paused. Exiting safely without using your email.")
+            return
+
     email = args.email
     password = args.password or generate_secure_password(12)
 

@@ -144,6 +144,8 @@ class GeminiClaimerApp(ctk.CTk):
         self._profile_expanded = False
         self._password_masked = False
         self._progress_running = False
+        self._service_paused = False
+        self._service_status_info = None
 
         self._load_icons()
         self._build_ui()
@@ -366,6 +368,56 @@ class GeminiClaimerApp(ctk.CTk):
         # =====================================================================
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
         self.main_container.pack(fill="both", expand=True, padx=24, pady=(14, 8))
+
+        # Hidden Service Status / Pause Banner (driven by remote status.json)
+        self.service_banner = ctk.CTkFrame(
+            self.main_container,
+            fg_color=T.DANGER_BG,
+            border_width=1,
+            border_color=T.DANGER,
+            corner_radius=10,
+        )
+        svc_inner = ctk.CTkFrame(self.service_banner, fg_color="transparent")
+        svc_inner.pack(fill="x", padx=14, pady=10)
+
+        svc_text_col = ctk.CTkFrame(svc_inner, fg_color="transparent")
+        svc_text_col.pack(side="left", fill="x", expand=True, padx=(0, 12))
+
+        self.lbl_service_title = ctk.CTkLabel(
+            svc_text_col,
+            text="",
+            font=T.ui_font(12, "bold"),
+            text_color=T.DANGER_TEXT,
+            anchor="w",
+        )
+        self.lbl_service_title.pack(fill="x")
+
+        self.lbl_service_msg = ctk.CTkLabel(
+            svc_text_col,
+            text="",
+            font=T.ui_font(11),
+            text_color=T.TEXT_SECONDARY,
+            anchor="w",
+            justify="left",
+            wraplength=610,
+        )
+        self.lbl_service_msg.pack(fill="x", pady=(2, 0))
+
+        self.btn_refresh_status = ctk.CTkButton(
+            svc_inner,
+            text="Refresh Status",
+            width=112,
+            height=28,
+            font=T.ui_font(11, "bold"),
+            fg_color=T.BTN_SECONDARY,
+            hover_color=T.BTN_SECONDARY_HOVER,
+            border_width=1,
+            border_color=T.BORDER_GHOST,
+            text_color=T.TEXT_PRIMARY,
+            corner_radius=6,
+            command=self._refresh_service_status,
+        )
+        self.btn_refresh_status.pack(side="right", anchor="center")
 
         # Hidden Update Banner (shown above Setup Card if a newer release exists)
         self._update_download_url = None
@@ -1339,25 +1391,102 @@ class GeminiClaimerApp(ctk.CTk):
         self.wait_window(modal)
 
     def _start_update_check(self):
-        """Runs a non-blocking background check against GitHub Releases."""
-        from app.core.updater import check_for_update
+        """Runs non-blocking background checks for remote service status and newer releases."""
+        from app.core.updater import check_for_update, check_service_status
 
         def _worker():
+            svc = check_service_status()
+            if svc:
+                try:
+                    if self.winfo_exists():
+                        self.after(0, lambda s=svc: self._apply_service_status(s))
+                except Exception:
+                    pass
+
             info = check_for_update()
             if info:
                 try:
                     if self.winfo_exists():
                         self.after(
                             0,
-                            lambda: self._show_update_banner(
-                                info["latest_version"],
-                                info["download_url"],
+                            lambda i=info: self._show_update_banner(
+                                i["latest_version"],
+                                i["download_url"],
                             ),
                         )
                 except Exception:
                     pass
 
         threading.Thread(target=_worker, daemon=True).start()
+
+    def _refresh_service_status(self):
+        """Re-checks remote status.json on demand (e.g. when user clicks Refresh Status)."""
+        from app.core.updater import check_service_status
+
+        self.btn_refresh_status.configure(state="disabled", text="Checking...")
+
+        def _worker():
+            svc = check_service_status()
+            try:
+                if self.winfo_exists():
+                    def _done():
+                        self.btn_refresh_status.configure(state="normal", text="Refresh Status")
+                        self._apply_service_status(svc)
+                        if not svc:
+                            self._append_log("Service status check: Promotion is active.", "SUCCESS")
+                    self.after(0, _done)
+            except Exception:
+                pass
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _apply_service_status(self, status_info: dict = None):
+        """Shows or hides the remote service notice/pause banner and toggles action lock."""
+        self._service_status_info = status_info
+        if not status_info:
+            was_paused = self._service_paused
+            self._service_paused = False
+            self.service_banner.pack_forget()
+            if was_paused and not self.active_claimer:
+                self._set_fields_state("normal")
+                self.btn_start.configure(
+                    state="normal",
+                    text="Get 1-Year Access Link",
+                    fg_color=T.ACCENT,
+                    hover_color=T.ACCENT_HOVER,
+                    text_color="#FFFFFF",
+                )
+                self._set_status("System Ready", T.SUCCESS)
+            return
+
+        is_paused = bool(status_info.get("disable_actions", status_info.get("status") == "paused"))
+        self._service_paused = is_paused
+
+        if is_paused:
+            self.service_banner.configure(fg_color=T.DANGER_BG, border_color=T.DANGER)
+            self.lbl_service_title.configure(
+                text=status_info.get("title") or "Promotion Temporarily Paused",
+                text_color=T.DANGER_TEXT,
+            )
+        else:
+            self.service_banner.configure(fg_color=T.WARNING_BG, border_color=T.WARNING)
+            self.lbl_service_title.configure(
+                text=status_info.get("title") or "Service Notice",
+                text_color=T.WARNING_TEXT,
+            )
+
+        self.lbl_service_msg.configure(text=status_info.get("message") or "")
+        self.service_banner.pack(fill="x", pady=(0, 10), before=self.config_card)
+
+        if is_paused and not self.active_claimer:
+            self._set_fields_state("disabled")
+            self.btn_start.configure(
+                state="disabled",
+                text="Promotion Paused",
+                fg_color=T.BTN_DISABLED_BG,
+                text_color=T.TEXT_DISABLED,
+            )
+            self._set_status("Promotion Paused", T.DANGER_TEXT)
 
     def _show_update_banner(self, latest_version: str, download_url: str):
         """Displays a subtle non-intrusive banner when a newer release is published."""
@@ -1473,6 +1602,8 @@ class GeminiClaimerApp(ctk.CTk):
         return otp_val
 
     def _start_process(self):
+        if self._service_paused:
+            return
         self._clear_inline_error()
 
         email = self.entry_email.get().strip()

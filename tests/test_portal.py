@@ -238,6 +238,41 @@ def test_updater_semver_and_check():
     print("[OK] test_updater_semver_and_check")
 
 
+def test_service_status_switch():
+    from app.core.updater import check_service_status
+
+    # 1. Active state -> returns None (no banner)
+    active_resp = MagicMock()
+    active_resp.status = 200
+    active_resp.read.return_value = b'{"status": "active", "disable_actions": false}'
+    active_resp.__enter__.return_value = active_resp
+    with patch("urllib.request.urlopen", return_value=active_resp):
+        assert check_service_status() is None
+
+    # 2. Paused state -> disables actions by default
+    paused_resp = MagicMock()
+    paused_resp.status = 200
+    paused_resp.read.return_value = b'{"status": "paused", "title": "Promo Paused", "message": "High traffic"}'
+    paused_resp.__enter__.return_value = paused_resp
+    with patch("urllib.request.urlopen", return_value=paused_resp):
+        s = check_service_status()
+    assert s is not None and s["status"] == "paused" and s["disable_actions"] is True, s
+
+    # 3. Notice state -> keeps actions enabled
+    notice_resp = MagicMock()
+    notice_resp.status = 200
+    notice_resp.read.return_value = b'{"status": "notice", "title": "Slow OTP", "message": "Delays expected", "disable_actions": false}'
+    notice_resp.__enter__.return_value = notice_resp
+    with patch("urllib.request.urlopen", return_value=notice_resp):
+        n = check_service_status()
+    assert n is not None and n["status"] == "notice" and n["disable_actions"] is False, n
+
+    # 4. Offline / 404 -> fails open (returns None)
+    with patch("urllib.request.urlopen", side_effect=OSError("404")):
+        assert check_service_status() is None
+    print("[OK] test_service_status_switch")
+
+
 def test_gui_smoke():
     if os.environ.get("CI") and sys.platform != "win32":
         print("[SKIP] test_gui_smoke (non-Windows CI)")
@@ -258,6 +293,14 @@ def test_gui_smoke():
         app._show_update_banner("v1.0.1", "https://github.com/nmrisrl11/gemini-ai-plus-portal/releases/latest")
         assert "v1.0.1" in app.lbl_update_msg.cget("text")
         app.update_banner.pack_forget()
+
+        # Remote service pause & resume smoke test
+        app._apply_service_status({"status": "paused", "title": "Paused", "message": "Try later", "disable_actions": True})
+        assert app._service_paused is True
+        assert app.btn_start.cget("state") == "disabled"
+        app._apply_service_status(None)
+        assert app._service_paused is False
+        assert app.btn_start.cget("state") == "normal"
     finally:
         app.destroy()
     print("[OK] test_gui_smoke")
@@ -272,5 +315,6 @@ if __name__ == "__main__":
     test_clean_google_one_url_regression()
     test_preferred_browser_selection()
     test_updater_semver_and_check()
+    test_service_status_switch()
     test_gui_smoke()
     print("\nALL PORTAL TESTS PASSED!")

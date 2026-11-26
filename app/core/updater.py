@@ -15,6 +15,7 @@ from app.config import (
     APP_VERSION,
     DOWNLOAD_PAGE_URL,
     RELEASES_API_URL,
+    SERVICE_STATUS_URL,
     UPDATE_MANIFEST_URL,
 )
 
@@ -42,6 +43,7 @@ def _fetch_json(url: str, current_version: str, timeout: float) -> Optional[dict
         url,
         headers={
             "Accept": "application/json, application/vnd.github+json",
+            "Cache-Control": "no-cache",
             "User-Agent": f"{APP_NAME}/{current_version}",
         },
         method="GET",
@@ -51,6 +53,50 @@ def _fetch_json(url: str, current_version: str, timeout: float) -> Optional[dict
             return None
         payload = json.loads(resp.read().decode("utf-8", errors="ignore"))
     return payload if isinstance(payload, dict) else None
+
+
+def check_service_status(
+    status_url: str = SERVICE_STATUS_URL,
+    current_version: str = APP_VERSION,
+    timeout: float = 4.0,
+) -> Optional[Dict[str, object]]:
+    """
+    Fetches the remote Cloudflare R2 status.json switch.
+    Returns a dict {'status', 'title', 'message', 'disable_actions'} when status
+    is 'paused' or 'notice'. Fails open (returns None) when status is 'active',
+    missing (404), or unreachable.
+    """
+    if not status_url:
+        return None
+    try:
+        payload = _fetch_json(status_url, current_version, timeout)
+        if not payload:
+            return None
+
+        state = str(payload.get("status") or "active").strip().lower()
+        if state not in ("paused", "notice"):
+            return None
+
+        default_title = (
+            "Promotion Temporarily Paused" if state == "paused" else "Service Notice"
+        )
+        default_msg = (
+            "The promotional gateway is temporarily paused due to high demand. "
+            "Provisioning is disabled so you do not waste your Gmail account. Please check back later."
+            if state == "paused"
+            else "The promotional gateway is currently experiencing delays."
+        )
+        disable_actions = bool(
+            payload.get("disable_actions", state == "paused")
+        )
+        return {
+            "status": state,
+            "title": str(payload.get("title") or default_title).strip(),
+            "message": str(payload.get("message") or default_msg).strip(),
+            "disable_actions": disable_actions,
+        }
+    except Exception:
+        return None
 
 
 def check_for_update(
